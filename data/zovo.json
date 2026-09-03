@@ -499,6 +499,30 @@
       "archived": 0,
       "created_at": 1788457485671,
       "updated_at": 1788457492716
+    },
+    {
+      "id": "2a9e0503-ddcc-421a-a2f7-4638f66def42",
+      "user_id": "demo-user-zovo",
+      "title": "Short friendly greeting message",
+      "model": "gemini-3.7-flash",
+      "system_prompt": "",
+      "assistant_id": "",
+      "pinned": 0,
+      "archived": 0,
+      "created_at": 1788457549696,
+      "updated_at": 1788457714496
+    },
+    {
+      "id": "08cc8a44-57f8-4551-a9e2-96b5ca35bc25",
+      "user_id": "demo-user-zovo",
+      "title": "Greeting Zovo",
+      "model": "gemini-3.7-flash",
+      "system_prompt": "",
+      "assistant_id": "",
+      "pinned": 0,
+      "archived": 0,
+      "created_at": 1788458084016,
+      "updated_at": 1788458090116
     }
   ],
   "messages": [
@@ -1079,6 +1103,50 @@
       "attachments": "[]",
       "created_at": 1788457492716,
       "updated_at": 1788457492716
+    },
+    {
+      "id": "dd3af0bd-d685-42d7-bfd8-652a2680f33c",
+      "conversation_id": "2a9e0503-ddcc-421a-a2f7-4638f66def42",
+      "user_id": "demo-user-zovo",
+      "role": "user",
+      "content": "hello",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788457549697,
+      "updated_at": 1788457549697
+    },
+    {
+      "id": "92e6d50f-9513-4c84-9da7-1843da6dc676",
+      "conversation_id": "2a9e0503-ddcc-421a-a2f7-4638f66def42",
+      "user_id": "demo-user-zovo",
+      "role": "assistant",
+      "content": "Hello! How can I help you today?",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788457551447,
+      "updated_at": 1788457551447
+    },
+    {
+      "id": "96e5611b-64c6-4111-b7db-f55745394f4a",
+      "conversation_id": "08cc8a44-57f8-4551-a9e2-96b5ca35bc25",
+      "user_id": "demo-user-zovo",
+      "role": "user",
+      "content": "hello zovo",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788458084017,
+      "updated_at": 1788458084017
+    },
+    {
+      "id": "2c493602-c92b-4bf0-8df9-c6e5130171fa",
+      "conversation_id": "08cc8a44-57f8-4551-a9e2-96b5ca35bc25",
+      "user_id": "demo-user-zovo",
+      "role": "assistant",
+      "content": "Hello! How can I help you today?",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788458087606,
+      "updated_at": 1788458087606
     }
   ],
   "attachments": [

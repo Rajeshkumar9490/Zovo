@@ -171,9 +171,9 @@ export async function streamGeminiChat({
   // Determine candidate models in priority fallback order
   const modelFallbackOrder: string[] = [
     model,
-    'gemini-3.6-flash',
     'gemini-3.1-flash-lite',
-    'gemini-3-flash-preview',
+    'gemini-3.8-flash',
+    'gemini-3.6-flash',
   ];
   // Deduplicate candidate models
   const candidateModels = Array.from(new Set(modelFallbackOrder));
@@ -245,20 +245,26 @@ export async function streamGeminiChat({
     const isPrimary = currentModel === model;
     const maxRetries = isPrimary ? 1 : 0;
 
+    // Fast-path: For non-reasoning models (like gemini-3.7-flash), turn off thinking delay (budget 0) for immediate 1st-token delivery
+    const modelConfig: any = { ...config };
+    if (currentModel !== 'gemini-3.1-pro-preview') {
+      modelConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       let fullResponseText = '';
       const discoveredSources: GroundingSource[] = [];
 
       try {
         if (attempt > 0) {
-          const backoffTime = 300 + Math.random() * 200;
+          const backoffTime = 200 + Math.random() * 150;
           await sleep(backoffTime);
         }
 
         const responseStream = await ai.models.generateContentStream({
           model: currentModel,
           contents,
-          config,
+          config: modelConfig,
         });
 
         for await (const chunk of responseStream) {
@@ -322,7 +328,7 @@ export async function streamGeminiChat({
 }
 
 export async function generateConversationTitle(firstMessage: string): Promise<string> {
-  const models: string[] = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.7-flash'];
+  const models: string[] = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'];
 
   for (const model of models) {
     try {
