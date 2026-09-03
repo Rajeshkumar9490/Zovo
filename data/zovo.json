@@ -487,6 +487,18 @@
       "archived": 0,
       "created_at": 1788119551100,
       "updated_at": 1788119558811
+    },
+    {
+      "id": "e6a2e2a8-f3df-4aa7-acc5-118434acc339",
+      "user_id": "demo-user-zovo",
+      "title": "New Conversation",
+      "model": "gemini-3.7-flash",
+      "system_prompt": "",
+      "assistant_id": "",
+      "pinned": 0,
+      "archived": 0,
+      "created_at": 1788457485671,
+      "updated_at": 1788457492716
     }
   ],
   "messages": [
@@ -1045,6 +1057,28 @@
       "attachments": "[]",
       "created_at": 1788119558811,
       "updated_at": 1788119558811
+    },
+    {
+      "id": "5ec527e3-33e2-4a81-8d1b-f328d9d64d78",
+      "conversation_id": "e6a2e2a8-f3df-4aa7-acc5-118434acc339",
+      "user_id": "demo-user-zovo",
+      "role": "user",
+      "content": "hello zovo",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788457485672,
+      "updated_at": 1788457485672
+    },
+    {
+      "id": "bc2f8e23-5db6-4555-bd98-fd949306aec3",
+      "conversation_id": "e6a2e2a8-f3df-4aa7-acc5-118434acc339",
+      "user_id": "demo-user-zovo",
+      "role": "assistant",
+      "content": "Hello! How can I help you today?",
+      "sources": "[]",
+      "attachments": "[]",
+      "created_at": 1788457492716,
+      "updated_at": 1788457492716
     }
   ],
   "attachments": [
