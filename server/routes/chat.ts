@@ -1,3 +1,4 @@
+import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ const router = express.Router();
 
 const ChatRequestSchema = z.object({
   conversationId: z.string().optional(),
+  beforeMessageId: z.string().optional(),
   message: z.string().min(1, 'Message content cannot be empty'),
   model: z
     .enum([
@@ -42,7 +44,7 @@ const ChatRequestSchema = z.object({
 });
 
 // POST /api/chat - Stream conversation with Gemini
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('guest-chat', 5, 86400, true), async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
 
   const parseResult = ChatRequestSchema.safeParse(req.body);
@@ -53,6 +55,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
   const {
     conversationId: requestedConvId,
+    beforeMessageId,
     message: userText,
     model: requestedModel,
     enableSearch: requestedSearch,
@@ -60,6 +63,20 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     systemPrompt: overrideSystemPrompt,
     attachments = [],
   } = parseResult.data;
+
+  let branchHistory: Awaited<ReturnType<typeof db.getMessages>> = [];
+  if (requestedConvId) {
+    const owned = await db.getConversation(requestedConvId, userId);
+    if (!owned) { res.status(404).json({ error: 'Conversation not found' }); return; }
+    if (beforeMessageId) {
+      const history = await db.getMessages(requestedConvId);
+      const index = history.findIndex(m => m.id === beforeMessageId && m.role === 'user');
+      if (index < 0) { res.status(400).json({ error: 'Message cannot be branched' }); return; }
+      branchHistory = history.slice(0, index);
+    }
+  } else if (beforeMessageId) {
+    res.status(400).json({ error: 'Conversation is required' }); return;
+  }
 
   // Set SSE Headers
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -79,7 +96,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const isSearchEnabled = requestedSearch !== undefined ? requestedSearch : Boolean(userSettings.search_enabled);
 
     // 1. Get or Create Conversation
-    let conversationId = requestedConvId;
+    let conversationId = beforeMessageId ? undefined : requestedConvId;
     let conversation = conversationId ? await db.getConversation(conversationId, userId) : undefined;
     let isNewConversation = false;
 
@@ -96,6 +113,10 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         pinned: 0,
         archived: 0,
       });
+    }
+
+    for (const msg of branchHistory) {
+      await db.createMessage({ ...msg, id: crypto.randomUUID(), conversation_id: conversationId!, user_id: userId });
     }
 
     sendEvent('conversation', {
@@ -244,7 +265,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     // 7. Auto-generate intelligent conversation title if new
     if (isNewConversation || conversation.title === 'New Conversation') {
-      generateConversationTitle(userText)
+      await generateConversationTitle(userText)
         .then(async (generatedTitle) => {
           if (generatedTitle && generatedTitle !== 'New Conversation') {
             await db.updateConversation(conversationId, userId, { title: generatedTitle });

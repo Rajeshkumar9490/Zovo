@@ -1,3 +1,4 @@
+import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -76,7 +77,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/knowledge/upload - Upload and process document into knowledge base
-router.post('/upload', authenticateToken, upload.single('file'), async (req: AuthRequest, res: Response) => {
+router.post('/upload', authenticateToken, usageLimit('knowledge', 20, 60), usageLimit('guest-uploads', 5, 86400, true), upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const file = req.file;

@@ -246,24 +246,26 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = 26214400;
 
 -- ============================================================================
--- 11. PERMISSIONS & ROLE GRANTS (For Server Backend Access)
--- ============================================================================
-GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO postgres, anon, authenticated, service_role;
-
--- Ensure RLS is disabled so the server backend has direct query access
-ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS user_settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS assistants DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS prompts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS conversations DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS messages DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS attachments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS documents DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS memories DISABLE ROW LEVEL SECURITY;
+-- 11. Backend-only permissions. The Express server uses the service role.
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.users FROM anon, authenticated;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.user_settings FROM anon, authenticated;
+ALTER TABLE public.assistants ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.assistants FROM anon, authenticated;
+ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.prompts FROM anon, authenticated;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.conversations FROM anon, authenticated;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.messages FROM anon, authenticated;
+ALTER TABLE public.attachments ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.attachments FROM anon, authenticated;
+ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.documents FROM anon, authenticated;
+ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.memories FROM anon, authenticated;

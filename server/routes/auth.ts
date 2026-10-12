@@ -1,3 +1,4 @@
+import { usageLimit } from '../middleware/limits.js';
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -19,7 +20,7 @@ const LoginSchema = z.object({
 });
 
 // POST /api/auth/register
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', usageLimit('auth', 20, 900), async (req: Request, res: Response) => {
   try {
     const parseResult = RegisterSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -70,7 +71,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', usageLimit('auth', 20, 900), async (req: Request, res: Response) => {
   try {
     const parseResult = LoginSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -115,22 +116,16 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/demo (Fast sandbox login for immediate preview)
-router.post('/demo', async (req: Request, res: Response) => {
+router.post('/demo', usageLimit('demo', 10, 3600), async (req: Request, res: Response) => {
   try {
-    const demoEmail = 'guest@zovo.ai';
-    let user = await db.getUserByEmail(demoEmail);
-
-    if (!user) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('zovo-demo-password', salt);
-      user = await db.createUser({
-        id: 'demo-user-zovo',
-        email: demoEmail,
-        password_hash: passwordHash,
-        name: 'Guest',
-        avatar: '',
-      });
-    }
+    const id = crypto.randomUUID();
+    const user = await db.createUser({
+      id,
+      email: `${id}@guest.zovo.ai`,
+      password_hash: await bcrypt.hash(crypto.randomUUID(), 10),
+      name: 'Guest',
+      avatar: '',
+    });
 
     const token = generateToken({
       id: user.id,

@@ -29,6 +29,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...options,
     headers,
+    signal: options.signal ?? AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {

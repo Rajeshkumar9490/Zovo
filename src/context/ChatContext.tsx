@@ -154,7 +154,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setIsStreaming(false);
   };
 
-  const sendMessage = async (content: string, customAttachments?: MessageAttachment[]) => {
+  const sendMessage = async (content: string, customAttachments?: MessageAttachment[], beforeMessageId?: string) => {
     if (!content.trim() && (!customAttachments || customAttachments.length === 0)) return;
 
     const attachmentsToSend = customAttachments || pendingAttachments;
@@ -203,6 +203,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({
           conversationId: activeConversation?.id,
+          beforeMessageId,
           message: content.trim(),
           model: activeModel,
           enableSearch: searchEnabled,
@@ -219,7 +220,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || `Server returned ${response.status}`);
       }
 
       const reader = response.body?.getReader();
@@ -227,6 +229,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let branchConversationId: string | undefined;
       let accumulatedAssistantText = '';
       let discoveredSources: GroundingSource[] = [];
 
@@ -248,6 +251,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
           if (eventName === 'conversation') {
             if (eventData.isNew) {
+              if (beforeMessageId) branchConversationId = eventData.id;
               const newConv: Conversation = {
                 id: eventData.id,
                 userId: 'me',
@@ -261,6 +265,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               setActiveConversation(newConv);
               setConversations((prev) => [newConv, ...prev]);
             }
+          } else if (eventName === 'userMessage') {
+            setMessages(prev => prev.map(m => m.id === tempUserMsgId ? { ...m, id: eventData.id } : m));
           } else if (eventName === 'chunk') {
             accumulatedAssistantText += eventData.text;
             setMessages((prev) =>
@@ -317,6 +323,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+      if (branchConversationId) {
+        const branch = await api.getConversation(branchConversationId);
+        setMessages(branch.messages);
+        setActiveConversation(branch.conversation);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('Stream generation stopped by user');
@@ -350,7 +361,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     // Remove the previous user message and assistant message, then resend cleanly
     setMessages((prev) => prev.slice(0, assistantIndex - 1));
-    await sendMessage(previousUserMsg.content, previousUserMsg.attachments);
+    await sendMessage(previousUserMsg.content, previousUserMsg.attachments, previousUserMsg.id);
   };
 
   const editAndResendMessage = async (userMessageId: string, newContent: string) => {
@@ -360,7 +371,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const currentMsg = messages[userIndex];
     // Truncate messages after this point
     setMessages((prev) => prev.slice(0, userIndex));
-    await sendMessage(newContent, currentMsg.attachments);
+    await sendMessage(newContent, currentMsg.attachments, currentMsg.id);
   };
 
   const deleteMessage = async (messageId: string) => {

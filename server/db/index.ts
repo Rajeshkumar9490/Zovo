@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -540,6 +541,7 @@ const supabase = getSupabaseClient();
 if (supabase) {
   databaseInstance = new SupabaseDatabase(supabase);
 } else {
+  if (process.env.VERCEL) throw new Error('Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on Vercel.');
   databaseInstance = new LocalDatabase();
 }
 
