@@ -13,3 +13,16 @@ Limits use atomic Supabase counters across function instances. Limits are 30 cha
 Edits and regeneration create a new conversation containing the messages before the selected user message. The old conversation is preserved. The client reloads the branch to obtain persisted message IDs.
 
 Run `npm install`, `npm run lint`, `npm test`, and `npm run build` for local verification. Tests use a temporary database and stub the AI response; they do not contact Gemini or Supabase. The production Supabase migration must still be validated in your project.
+
+
+## Quality pipeline update
+
+Balanced defaults to the documented stable Gemini 3.8 Flash route with adaptive reasoning. Fast uses low reasoning; Reasoning uses Pro and fails explicitly when quota or availability prevents using Pro. It never silently downgrades to Lite. Existing Gemini 3.7 conversation selections resolve to Balanced. See https://ai.google.dev/gemini-api/docs/generate-content/thinking for supported controls.
+
+Attachments must include the uploaded attachment ID. The backend checks ownership and reads the stored file. Legacy messages without attachment IDs require reupload. Direct chat JSON no longer contains base64 file data. Uploads are limited to 3 MB per message to fit the hosting request limit. PDF chat uses native multimodal input, DOCX/TXT/MD/CSV/JSON are parsed as text, and the knowledge library uses PDF page text or DOCX text extraction. Scanned PDFs without text should be sent in chat or as page images; the knowledge library reports that it cannot extract text.
+
+No additional database migration is required for this update. Source/model metadata is stored in the existing sources JSON field with backwards-compatible reads. The initial schema defaults now use Gemini 3.8 Flash. Title generation is local and deterministic. All provider attempts are bounded; disconnecting stops client/server reading, though provider cancellation does not guarantee that already submitted inference stops billing.
+
+The mammoth library's unused CLI argparse dependency is overridden to version 2 to remove the vulnerable sprintf-js dependency. Only its library API is used and tested; this application does not use the mammoth CLI.
+
+Use `npm run eval:generate` to regenerate the 104-case synthetic suite. Set `ZOVO_EVAL_URL`, `ZOVO_EVAL_TOKEN` for an isolated evaluation account, and `ZOVO_EVAL_OUTPUT` for a local results file, then run `npm run eval`. It stops after three consecutive delivery failures. Cases span eight categories but use template variants; passing this set is not proof of Astra parity or comprehensive security. Keep credentials out of results and commits. Compare the same cases against Astra only after obtaining authorized model access.

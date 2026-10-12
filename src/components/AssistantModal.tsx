@@ -20,7 +20,7 @@ export function AssistantModal({ isOpen, onClose, onSelectAssistant }: Assistant
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [instructions, setInstructions] = useState('');
-  const [model, setModel] = useState<GeminiModelId>('gemini-3.7-flash');
+  const [model, setModel] = useState<GeminiModelId>('gemini-3.8-flash');
   const [starterPrompts, setStarterPrompts] = useState<string>('');
 
   useEffect(() => {

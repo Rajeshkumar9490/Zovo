@@ -18,9 +18,9 @@ export interface ModelConfig {
  */
 export const ZOVO_MODELS: readonly ModelConfig[] = [
   {
-    id: 'gemini-3.7-flash',
-    displayName: 'Zovo Instant',
-    tagline: 'Fast, intelligent, next-gen reasoning',
+    id: 'gemini-3.8-flash',
+    displayName: 'Zovo Balanced',
+    tagline: 'Adaptive reasoning for everyday work',
     description: 'High-speed intelligence balanced for instant responses, general knowledge, coding, and creative work.',
     badge: 'Default',
     isDefault: true,
@@ -57,7 +57,7 @@ export const SELECTABLE_MODELS: readonly ModelConfig[] = ZOVO_MODELS;
  * Returns the cosmetic display name for a given Gemini Model ID
  */
 export function getModelDisplayName(modelId?: string): string {
-  if (!modelId) return 'Zovo Instant';
+  if (!modelId || modelId === 'gemini-3.7-flash') return 'Zovo Balanced';
   const found = ZOVO_MODELS.find((m) => m.id === modelId);
   if (found) return found.displayName;
   if (modelId === 'gemini-3-flash-preview') return 'Zovo Flash';

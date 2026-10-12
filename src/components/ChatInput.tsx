@@ -71,6 +71,7 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const modelButtonRef = useRef<HTMLButtonElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
 
   const remainingQuestions = Math.max(0, maxGuestQuestions - guestQuestionsUsed);
@@ -86,6 +87,16 @@ export function ChatInput({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isModelMenuOpen) return;
+    const close = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { setIsModelMenuOpen(false); modelButtonRef.current?.focus(); }
+    };
+    document.addEventListener('keydown', close);
+    modelMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="true"]')?.focus();
+    return () => document.removeEventListener('keydown', close);
+  }, [isModelMenuOpen]);
 
   // Auto resize textarea height
   useEffect(() => {
@@ -189,6 +200,9 @@ export function ChatInput({
   };
 
   const handleFileUpload = async (file: File) => {
+    if (file.size > 3 * 1024 * 1024 || pendingAttachments.reduce((sum, a) => sum + a.size, file.size) > 3 * 1024 * 1024) {
+      alert('Keep attachments in one message under 3 MB.'); return;
+    }
     if (isGuest && !canUploadFile(1)) {
       openAuthModal(
         'register',
@@ -375,6 +389,7 @@ export function ChatInput({
           )}
         </button>
         <input
+          aria-label="Upload a file"
           ref={fileInputRef}
           type="file"
           onChange={handleFileInputChange}
@@ -382,6 +397,7 @@ export function ChatInput({
           className="hidden"
         />
         <input
+          aria-label="Upload an image"
           ref={imageInputRef}
           type="file"
           onChange={handleFileInputChange}
@@ -392,6 +408,7 @@ export function ChatInput({
         {/* Center: Auto-expanding Text Area */}
         <div className="flex-1 min-w-0 flex items-center py-1">
           <textarea
+            aria-label="Message Zovo"
             ref={textareaRef}
             rows={1}
             value={input}
@@ -416,6 +433,10 @@ export function ChatInput({
               type="button"
               onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
               className="px-2.5 py-1 rounded-full text-xs font-medium text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-white dark:bg-zinc-900/80 dark:hover:bg-zinc-800 transition-colors flex items-center gap-1 cursor-pointer border border-zinc-200/80 dark:border-zinc-800"
+              ref={modelButtonRef}
+              aria-haspopup="menu"
+              aria-expanded={isModelMenuOpen}
+              aria-controls="zovo-model-menu"
               title={`Active model: ${getModelDisplayName(activeModel)}. Click to choose.`}
             >
               <span>{getModelDisplayName(activeModel)}</span>
@@ -424,7 +445,14 @@ export function ChatInput({
 
             {/* Model Selection Floating Dropdown */}
             {isModelMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2.5 w-64 p-1.5 rounded-2xl bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 shadow-2xl backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div id="zovo-model-menu" role="menu" aria-label="Choose an AI mode" onKeyDown={e => {
+                if (!['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
+                e.preventDefault();
+                const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+                const index = items.indexOf(document.activeElement as HTMLButtonElement);
+                const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length-1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+                items[next]?.focus();
+              }} className="absolute bottom-full right-0 mb-2.5 w-64 p-1.5 rounded-2xl bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 shadow-2xl backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-2.5 py-1.5 border-b border-zinc-100 dark:border-zinc-800/80 mb-1">
                   <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                     Zovo Intelligence Models
@@ -434,7 +462,7 @@ export function ChatInput({
                   {ZOVO_MODELS.slice(0, 3).map((m) => {
                     const isSelected = activeModel === m.id;
                     const Icon =
-                      m.id === 'gemini-3.7-flash'
+                      m.id === 'gemini-3.8-flash'
                         ? Zap
                         : m.id === 'gemini-3.6-flash'
                         ? Gauge
@@ -443,6 +471,8 @@ export function ChatInput({
                     return (
                       <button
                         key={m.id}
+                        role="menuitemradio"
+                        aria-checked={isSelected}
                         type="button"
                         onClick={() => {
                           onSelectModel(m.id);

@@ -36,7 +36,7 @@ router.post('/transcribe', authenticateToken, usageLimit('voice', 20, 60), uploa
 
     // Use verified high-throughput multimodal models
     let transcript = '';
-    const transcribeModels = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.7-flash'];
+    const transcribeModels = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.8-flash'];
 
     for (const m of transcribeModels) {
       try {

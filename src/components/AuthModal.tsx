@@ -197,7 +197,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={mode === 'register' ? 12 : 1}
                 className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[#0A0A0A] border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-zinc-700"
               />
             </div>

@@ -44,7 +44,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
 
-  const [activeModel, setActiveModel] = useState<GeminiModelId>('gemini-3.7-flash');
+  const [activeModel, setActiveModel] = useState<GeminiModelId>('gemini-3.8-flash');
   const [searchEnabled, setSearchEnabled] = useState<boolean>(false);
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
 
@@ -79,7 +79,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const res = await api.getConversation(id);
       setActiveConversation(res.conversation);
       setMessages(res.messages);
-      setActiveModel(res.conversation.model || 'gemini-3.7-flash');
+      setActiveModel(res.conversation.model || 'gemini-3.8-flash');
     } catch (err) {
       console.error('Failed to fetch conversation messages:', err);
     } finally {
@@ -149,15 +149,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const stopGeneration = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
     }
     setIsStreaming(false);
   };
 
   const sendMessage = async (content: string, customAttachments?: MessageAttachment[], beforeMessageId?: string) => {
-    if (!content.trim() && (!customAttachments || customAttachments.length === 0)) return;
-
+    if (isStreaming || abortControllerRef.current) return;
     const attachmentsToSend = customAttachments || pendingAttachments;
+    if (!content.trim() && attachmentsToSend.length === 0) return;
     clearPendingAttachments();
 
     // Optimistically add user message
@@ -192,6 +191,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const deadline = setTimeout(() => controller.abort(new Error('The response timed out. Please retry.')), 100000);
 
     try {
       const token = getStoredToken();
@@ -210,9 +210,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           assistantId: activeConversation?.assistantId,
           systemPrompt: activeConversation?.systemPrompt,
           attachments: attachmentsToSend.map((a) => ({
+            id: a.id,
             filename: a.filename,
             mimeType: a.mimeType,
-            dataUrl: a.dataUrl,
             size: a.size,
           })),
         }),
@@ -232,6 +232,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       let branchConversationId: string | undefined;
       let accumulatedAssistantText = '';
       let discoveredSources: GroundingSource[] = [];
+      let completed = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -267,6 +268,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             }
           } else if (eventName === 'userMessage') {
             setMessages(prev => prev.map(m => m.id === tempUserMsgId ? { ...m, id: eventData.id } : m));
+          } else if (eventName === 'model') {
+            setMessages(prev => prev.map(m => m.id === tempAssistantMsgId ? { ...m, actualModel: eventData.actualModel } : m));
+          } else if (eventName === 'warning') {
+            setMessages(prev => prev.map(m => m.id === tempAssistantMsgId ? { ...m, notices: [...new Set([...(m.notices || []), eventData.message])] } : m));
           } else if (eventName === 'chunk') {
             accumulatedAssistantText += eventData.text;
             setMessages((prev) =>
@@ -286,6 +291,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               )
             );
           } else if (eventName === 'complete') {
+            completed = true;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempAssistantMsgId
@@ -294,6 +300,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                       id: eventData.id || m.id,
                       content: eventData.content || accumulatedAssistantText,
                       sources: eventData.sources || discoveredSources,
+                      actualModel: eventData.actualModel,
+                      notices: eventData.notices || m.notices,
                       status: 'complete',
                     }
                   : m
@@ -323,14 +331,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-      if (branchConversationId) {
+      if (!completed) setMessages(prev => prev.map(m => m.id === tempAssistantMsgId && m.status === 'streaming' ? { ...m, status: 'error', error: 'The response ended before it completed. Please retry.' } : m));
+      if (branchConversationId && completed) {
         const branch = await api.getConversation(branchConversationId);
         setMessages(branch.messages);
         setActiveConversation(branch.conversation);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.log('Stream generation stopped by user');
+        setMessages(prev => prev.map(m => m.id === tempAssistantMsgId ? { ...m, status: 'complete', notices: [...(m.notices || []), 'Generation stopped. This partial response is not saved.'] } : m));
       } else {
         console.error('Chat error:', err);
         setMessages((prev) =>
@@ -346,6 +355,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         );
       }
     } finally {
+      clearTimeout(deadline);
       setIsStreaming(false);
       abortControllerRef.current = null;
       loadConversations();
