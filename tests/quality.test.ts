@@ -96,3 +96,7 @@ test('partial failed streams never append a different fallback response', async 
   assert.equal(calls,1);assert.equal(answer,'partial');
  }finally{ai.models.generateContentStream=original;}
 });
+test('one generic word does not attach an unrelated document citation', () => {
+ const documents=[{id:'nebula',filename:'nebula.txt',chunks:JSON.stringify(['Nebula budget 27500'])}] as any;
+ assert.equal(retrieveKnowledge(documents,'Give the launch code and budget from attached Quasar file').sources.length,0);
+});

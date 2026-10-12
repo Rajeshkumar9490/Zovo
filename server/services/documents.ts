@@ -4,6 +4,9 @@ export interface DocumentPage { page?: number; text: string }
 export async function extractDocument(buffer: Buffer, mimeType: string, filename: string): Promise<DocumentPage[]> {
   let pages: DocumentPage[];
   if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
+    // Explicit import makes the native dependency visible to serverless file tracing.
+    const canvas = await import('@napi-rs/canvas');
+    Object.assign(globalThis, { DOMMatrix: canvas.DOMMatrix, Path2D: canvas.Path2D, ImageData: canvas.ImageData });
     const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     try {

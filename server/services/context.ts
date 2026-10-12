@@ -23,7 +23,7 @@ export function selectHistory(messages: MessageRow[], maxCharacters = 48000) {
   return { recent, earlierContext: excerpts.join('\n---\n'), omittedCount: omitted.length, earlierContextPartial: omitted.some(m => m.role === 'user' && m.content.length > 2000) || budget <= 0 };
 }
 export function retrieveKnowledge(documents: DocumentRow[], query: string) {
-  const stop = new Set(['the','from','with','this','that','what','give','only','json','document','project','about','and','for','please']);
+  const stop = new Set(['the','from','with','this','that','what','give','only','json','document','project','about','and','for','please','string','number','return','attached','file','knowledge']);
   const terms = [...new Set(query.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])].filter(t => t.length > 2 && !stop.has(t));
   const ranked: { text: string; score: number; document: DocumentRow; page?: number; index: number }[] = [];
   for (const document of documents) {
@@ -34,7 +34,7 @@ export function retrieveKnowledge(documents: DocumentRow[], query: string) {
       if (typeof text !== 'string') return;
       const haystack = (document.filename + '\n' + text).toLowerCase();
       const score = terms.reduce((sum,t) => sum + (haystack.includes(t) ? 1 : 0), 0);
-      if (score > 0) ranked.push({ text, score, document, page: chunk.page, index });
+      if (score >= (terms.length > 1 ? 2 : 1)) ranked.push({ text, score, document, page: chunk.page, index });
     });
   }
   const selected = ranked.sort((a,b) => b.score-a.score).slice(0,6);
