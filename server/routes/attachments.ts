@@ -1,3 +1,4 @@
+import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -49,7 +50,7 @@ const upload = multer({
 // POST /api/attachments/upload - Upload file to Supabase Storage (or local fallback)
 router.post(
   '/upload',
-  authenticateToken,
+  authenticateToken, usageLimit('attachments', 20, 60), usageLimit('guest-uploads', 5, 86400, true),
   upload.single('file'),
   async (req: AuthRequest, res: Response) => {
     try {

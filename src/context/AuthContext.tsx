@@ -59,21 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Determine if active user is a guest / demo session
-  const isGuest = Boolean(!user || user.email === 'guest@zovo.ai' || user.id === 'demo-user-zovo');
+  const isGuest = Boolean(!user || user.email.endsWith('@guest.zovo.ai') || user.email === 'guest@zovo.ai' || user.id === 'demo-user-zovo');
 
   useEffect(() => {
     async function loadSession() {
-      const token = getStoredToken();
+      let token: string | null;
+      try { token = getStoredToken(); } catch { setIsLoading(false); return; }
       if (!token) {
-        try {
-          const res = await api.demoLogin();
-          setStoredToken(res.token);
-          setUser(res.user);
-        } catch (err) {
-          console.warn('Auto-session initialization failed:', err);
-        } finally {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
         return;
       }
 
@@ -81,15 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await api.getMe();
         setUser(data.user);
       } catch (err) {
-        console.warn('Session restoration failed, re-authenticating:', err);
-        try {
-          const res = await api.demoLogin();
-          setStoredToken(res.token);
-          setUser(res.user);
-        } catch {
-          removeStoredToken();
-          setUser(null);
-        }
+        removeStoredToken();
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -110,11 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const canAskQuestion = (): boolean => {
-    return true;
+    return !isGuest || guestQuestionsUsed < MAX_GUEST_QUESTIONS;
   };
 
-  const canUploadFile = (_count = 1): boolean => {
-    return true;
+  const canUploadFile = (count = 1): boolean => {
+    return !isGuest || guestUploadsUsed + count <= MAX_GUEST_UPLOADS;
   };
 
   const recordQuestion = () => {

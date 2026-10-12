@@ -1,8 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
+import 'dotenv/config';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'zovo-default-secret-production-key-2026';
+if ((process.env.NODE_ENV === 'production' || process.env.VERCEL) && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
+  throw new Error('Set JWT_SECRET to a random secret of at least 32 characters.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 export interface AuthenticatedUser {
   id: string;
@@ -40,7 +45,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
     const user = await db.getUserById(decoded.id);
-    if (!user) {
+    if (!user || user.id === 'demo-user-zovo' || user.email === 'guest@zovo.ai') {
       res.status(401).json({ error: 'Session expired or user not found.' });
       return;
     }

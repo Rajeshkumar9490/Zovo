@@ -64,21 +64,23 @@ function MainApp() {
       const promptToSend = pendingInitialPrompt;
       setPendingInitialPrompt(null);
       // Small timeout to allow conversation initialization
-      const timer = setTimeout(() => {
-        sendMessage(promptToSend);
-      }, 250);
-      return () => clearTimeout(timer);
+      void sendMessage(promptToSend);
     }
   }, [isAuthenticated, pendingInitialPrompt, sendMessage]);
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      demoLogin();
+  const [startupError, setStartupError] = useState<string | null>(null);
+  const startDemo = async (prompt?: string) => {
+    setStartupError(null);
+    try {
+      await demoLogin();
+      if (prompt) { initialPromptSentRef.current = false; setPendingInitialPrompt(prompt); }
+    } catch {
+      setStartupError('Zovo could not start. Please try again or sign in.');
     }
-  }, [isLoading, isAuthenticated, demoLogin]);
+  };
 
   // If session is loading
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#F6F7FA] dark:bg-[#0A0A0A] text-zinc-700 dark:text-zinc-300">
         <div className="flex flex-col items-center gap-3">
@@ -87,6 +89,16 @@ function MainApp() {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <>
+      <LandingPage onOpenAuth={openAuthModal} onStartDemo={startDemo} />
+      {startupError && <div role="alert" className="fixed bottom-16 inset-x-4 mx-auto max-w-lg rounded-xl bg-red-950 text-white p-4 text-center">
+        {startupError} <button onClick={() => startDemo()} className="underline ml-2">Retry</button>
+      </div>}
+      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialMode={authModalMode} reason={authModalReason} />
+    </>;
   }
 
   const handleNewChat = () => {

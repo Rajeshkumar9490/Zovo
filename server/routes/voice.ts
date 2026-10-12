@@ -1,3 +1,4 @@
+import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import multer from 'multer';
 import { getGeminiClient } from '../services/gemini.js';
@@ -11,7 +12,7 @@ const upload = multer({
 });
 
 // POST /api/voice/transcribe - Transcribe uploaded audio using Gemini
-router.post('/transcribe', authenticateToken, upload.single('audio'), async (req: AuthRequest, res: Response) => {
+router.post('/transcribe', authenticateToken, usageLimit('voice', 20, 60), upload.single('audio'), async (req: AuthRequest, res: Response) => {
   try {
     const file = req.file;
     const bodyAudio = req.body?.audioBase64;

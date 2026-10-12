@@ -69,7 +69,7 @@ export function LandingPage({ onOpenAuth, onStartDemo }: LandingPageProps) {
             How can Zovo help?
           </h1>
           <p className="text-sm sm:text-base text-zinc-400 max-w-lg mx-auto font-normal">
-            Your intelligent workspace, powered by Zovo Intelligence.
+            Turn screenshots, logs, and documents into clear answers.
           </p>
         </div>
 
