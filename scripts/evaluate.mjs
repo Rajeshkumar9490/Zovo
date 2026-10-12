@@ -7,7 +7,11 @@ const limit=Number(process.env.ZOVO_EVAL_LIMIT||suite.cases.length);
 const results=[];const startedAt=new Date().toISOString();
 const destination=process.env.ZOVO_EVAL_OUTPUT||'eval-results.json';
 function normalize(v){if(Array.isArray(v))return v.map(normalize);if(v&&typeof v==='object')return Object.fromEntries(Object.keys(v).sort().map(k=>[k,normalize(v[k])]));return v;}
-for(const item of suite.cases.slice(0,limit)){
+let cursor=0;let stopped=false;let nextStart=0;
+async function worker(){while(cursor<Math.min(limit,suite.cases.length)&&!stopped){
+ const item=suite.cases[cursor++];
+ const scheduled=Math.max(Date.now(),nextStart);nextStart=scheduled+2500;
+ if(scheduled>Date.now())await new Promise(resolve=>setTimeout(resolve,scheduled-Date.now()));
  const begin=performance.now();const row={id:item.id,category:item.category,expected:item.expected,pass:false,firstTokenMs:null,answerMs:null,actualModel:null,errors:[],sources:[]};
  try {
   const response=await fetch(endpoint+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({message:item.prompt,model:'gemini-3.8-flash'}),signal:AbortSignal.timeout(100000)});
@@ -21,5 +25,7 @@ for(const item of suite.cases.slice(0,limit)){
  row.endMs=performance.now()-begin;results.push(row);
  fs.writeFileSync(destination,JSON.stringify({suiteVersion:suite.version,startedAt,results},null,2));
  console.log(JSON.stringify({id:row.id,pass:row.pass,firstTokenMs:row.firstTokenMs,actualModel:row.actualModel,errors:row.errors}));
- if(results.slice(-3).length===3&&results.slice(-3).every(r=>r.answerMs===null)){console.log('Stopping after three delivery failures; fix availability before further evaluation.');break;}
+ if(results.slice(-3).length===3&&results.slice(-3).every(r=>r.answerMs===null)){console.log('Stopping after three delivery failures; fix availability before further evaluation.');stopped=true;break;}
 }
+}
+await Promise.all(Array.from({length:Math.max(1,Math.min(2,Number(process.env.ZOVO_EVAL_CONCURRENCY||2)))},worker));

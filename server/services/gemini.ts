@@ -78,7 +78,7 @@ export function extractCleanErrorMessage(error: any): string {
 
   // Handle common known status codes with clear guidance
   if (error.code === 503 || error.status === 503 || rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('UNAVAILABLE')) {
-    return 'The model is currently experiencing temporary high demand (503). Retrying shortly...';
+    return 'The model is currently experiencing temporary high demand (503). Please retry shortly or choose another mode.';
   }
   if (error.code === 429 || error.status === 429 || rawMsg.includes('429') || rawMsg.includes('RESOURCE_EXHAUSTED')) {
     return 'Rate limit reached. Please wait a moment before sending another message.';

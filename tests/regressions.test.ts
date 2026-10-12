@@ -92,6 +92,8 @@ test('uploaded text reaches the model, saved instructions work, and stream metad
  assert.equal(cross.status,400);
  const emptyPrompt = await request('/api/chat',guest.token,{message:'',attachments:[{id:attachment.id}]});
  assert.equal(emptyPrompt.status,200); await emptyPrompt.text();
+ const missing = await request('/api/chat', guest.token, {message:'From my missing document, give the release date.'});
+ assert.match(await missing.text(), /No matching uploaded document/);
  const badPassword = await fetch(base+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'test@example.com',name:'Test',password:'x'})});
  assert.equal(badPassword.status,400);
 });
