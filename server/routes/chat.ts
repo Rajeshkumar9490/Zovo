@@ -1,3 +1,4 @@
+import { streamChat, validateHostedRequest } from '../services/providers.js';
 import { resolveAttachments } from '../services/chatAttachments.js';
 import { selectHistory, retrieveKnowledge } from '../services/context.js';
 import { usageLimit } from '../middleware/limits.js';
@@ -7,7 +8,6 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
 import {
-  streamGeminiChat,
   generateConversationTitle,
   extractCleanErrorMessage,
   ChatHistoryMessage,
@@ -28,6 +28,8 @@ const ChatRequestSchema = z.object({
       'gemini-3.1-pro-preview',
       'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
+      'groq/openai/gpt-oss-20b',
+      'openrouter/free',
     ])
     .optional(),
   enableSearch: z.boolean().optional(),
@@ -109,6 +111,8 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
     const [userSettings, memories, docs] = await Promise.all([db.getUserSettings(userId), db.getMemories(userId), db.getDocuments(userId)]);
     const selectedModel = (requestedModel || userSettings.selected_model || 'gemini-3.8-flash') as GeminiModelId;
     const isSearchEnabled = requestedSearch !== undefined ? requestedSearch : Boolean(userSettings.search_enabled);
+
+    if (!selectedModel.startsWith('gemini-')) validateHostedRequest(selectedModel, isSearchEnabled);
 
     // 1. Get or Create Conversation
     let conversationId = beforeMessageId ? undefined : requestedConvId;
@@ -228,7 +232,7 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
     if (knowledge.sources.length) sendEvent('sources', knowledge.sources);
 
     // Stream from Gemini
-    await streamGeminiChat({
+    await streamChat({
       model: selectedModel,
       messages: formattedHistory,
       systemInstruction: combinedSystemInstruction,

@@ -46,6 +46,16 @@ export const ZOVO_MODELS: readonly ModelConfig[] = [
     description: 'Lightweight and ultra-responsive for brief inquiries and low-latency interaction.',
     badge: 'Lite',
   },
+  {
+    id: 'groq/openai/gpt-oss-20b', displayName: 'Groq GPT-OSS',
+    tagline: 'Text & documents · free-tier quotas',
+    description: 'Open-weight GPT-OSS 20B hosted by Groq. Free-plan quotas apply. No web search or images in this mode.', badge: 'Free tier',
+  },
+  {
+    id: 'openrouter/free', displayName: 'OpenRouter Free',
+    tagline: 'Free models · availability varies',
+    description: 'OpenRouter routes to a free model. Text and documents supported; the actual model is shown on the answer.', badge: 'Free',
+  },
 ] as const;
 
 /**

@@ -6,7 +6,9 @@ export type GeminiModelId =
   | 'gemini-3.6-flash'
   | 'gemini-3.1-pro-preview'
   | 'gemini-3.1-flash-lite'
-  | 'gemini-3-flash-preview';
+  | 'gemini-3-flash-preview'
+  | 'groq/openai/gpt-oss-20b'
+  | 'openrouter/free';
 
 export interface ModelOption {
   id: GeminiModelId;

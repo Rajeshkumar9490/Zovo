@@ -1,3 +1,5 @@
+import { providerConfigured } from './services/providers.js';
+import { ZOVO_MODELS } from '../src/lib/models.js';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -35,6 +37,10 @@ app.get('/api/health', (_req: Request, res: Response) => {
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get('/api/models', (_req, res) => {
+  res.json({models: ZOVO_MODELS.map(model => ({id: model.id, configured: providerConfigured(model.id)}))});
 });
 
 // Raw Supabase SQL Schema endpoint for easy setup & copy-paste
