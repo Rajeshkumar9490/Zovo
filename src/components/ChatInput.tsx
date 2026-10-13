@@ -60,6 +60,14 @@ export function ChatInput({
   } = useAuth();
 
   const [input, setInput] = useState('');
+  const [configuredModels, setConfiguredModels] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/models', {signal: controller.signal}).then(r => r.json()).then(data => {
+      setConfiguredModels(Object.fromEntries(data.models.map((m: {id: string; configured: boolean}) => [m.id, m.configured])));
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
@@ -448,7 +456,7 @@ export function ChatInput({
               <div id="zovo-model-menu" role="menu" aria-label="Choose an AI mode" onKeyDown={e => {
                 if (!['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
                 e.preventDefault();
-                const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+                const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]:not(:disabled)'));
                 const index = items.indexOf(document.activeElement as HTMLButtonElement);
                 const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length-1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
                 items[next]?.focus();
@@ -459,8 +467,9 @@ export function ChatInput({
                   </p>
                 </div>
                 <div className="space-y-1">
-                  {ZOVO_MODELS.slice(0, 3).map((m) => {
+                  {ZOVO_MODELS.filter(m => m.id !== 'gemini-3.1-flash-lite').map((m) => {
                     const isSelected = activeModel === m.id;
+                    const unavailable = !m.id.startsWith('gemini-') && configuredModels[m.id] !== true;
                     const Icon =
                       m.id === 'gemini-3.8-flash'
                         ? Zap
@@ -473,6 +482,7 @@ export function ChatInput({
                         key={m.id}
                         role="menuitemradio"
                         aria-checked={isSelected}
+                        disabled={unavailable}
                         type="button"
                         onClick={() => {
                           onSelectModel(m.id);
@@ -493,7 +503,7 @@ export function ChatInput({
                             {isSelected && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />}
                           </div>
                           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                            {m.tagline}
+                            {unavailable ? 'Setup required' : m.tagline}
                           </p>
                         </div>
                       </button>

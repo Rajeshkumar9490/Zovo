@@ -26,3 +26,13 @@ No additional database migration is required for this update. Source/model metad
 The mammoth library's unused CLI argparse dependency is overridden to version 2 to remove the vulnerable sprintf-js dependency. Only its library API is used and tested; this application does not use the mammoth CLI.
 
 Use `npm run eval:generate` to regenerate the 104-case synthetic suite. Set `ZOVO_EVAL_URL`, `ZOVO_EVAL_TOKEN` for an isolated evaluation account, and `ZOVO_EVAL_OUTPUT` for a local results file, then run `npm run eval`. It stops after three consecutive delivery failures. Cases span eight categories but use template variants; passing this set is not proof of Astra parity or comprehensive security. Keep credentials out of results and commits. Compare the same cases against Astra only after obtaining authorized model access.
+
+## Optional hosted free-tier models
+
+Add `GROQ_API_KEY` and `OPENROUTER_API_KEY` as Sensitive Production variables in Vercel, then redeploy. Provider keys stay server-side. `/api/models` exposes only configuration booleans, never keys. The chat menu disables hosted modes until configured.
+
+Groq mode uses `openai/gpt-oss-20b`. Keep the Groq organization on its **Free plan**: the application cannot inspect or enforce the organization's billing tier, and the same API can charge on a paid plan. OpenRouter mode pins `openrouter/free`, with no paid model fallbacks or paid web plugins. Free limits and model availability can change. These modes are explicitly selected, and existing custom assistants can use them; there is no automatic transfer from Gemini to another provider.
+
+The initial hosted integration supports text, TXT, DOCX and readable PDFs. It rejects image inputs and web search rather than silently dropping those capabilities. It preserves saved assistant instructions, knowledge evidence, page citations, cancellation and actual-model metadata. These are hosted model choices, not autonomous tool-executing agents. Free models have no demonstrated benchmark parity with Astra.
+
+Primary provider documentation: https://console.groq.com/docs/openai, https://console.groq.com/docs/models, https://console.groq.com/docs/rate-limits, https://openrouter.ai/openrouter/free.
