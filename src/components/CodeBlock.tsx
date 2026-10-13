@@ -18,9 +18,9 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
   const displayLang = language || 'code';
 
   return (
-    <div className="relative my-3 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-900 text-zinc-200 text-sm font-mono shadow-md">
+    <div className="relative my-3 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-900 text-zinc-200 text-sm font-mono">
       <div className="flex items-center justify-between px-3.5 py-2 bg-zinc-950 border-b border-zinc-800 text-xs text-zinc-400">
-        <span className="font-semibold uppercase tracking-wider text-zinc-300">
+        <span className="font-medium text-zinc-300">
           {displayLang}
         </span>
         <button
