@@ -70,6 +70,8 @@ export function getModelDisplayName(modelId?: string): string {
   if (!modelId || modelId === 'gemini-3.7-flash') return 'Zovo Balanced';
   const found = ZOVO_MODELS.find((m) => m.id === modelId);
   if (found) return found.displayName;
+  if (modelId.startsWith('openrouter/')) return 'OpenRouter Free';
+  if (modelId.startsWith('groq/')) return 'Groq GPT-OSS';
   if (modelId === 'gemini-3-flash-preview') return 'Zovo Flash';
   return 'Zovo Instant';
 }

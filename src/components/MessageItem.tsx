@@ -1,6 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
   Copy,
   Check,
@@ -17,7 +15,7 @@ import {
 } from 'lucide-react';
 import { getModelDisplayName } from '../lib/models.js';
 import { Message } from '../types.js';
-import { CodeBlock } from './CodeBlock.js';
+import { MessageMarkdown } from './MessageMarkdown.js';
 import { ZovoLogo } from './ZovoLogo.js';
 
 interface MessageItemProps {
@@ -92,10 +90,10 @@ export function MessageItem({
 
   return (
     <div
-      className={`group relative py-3 sm:py-3.5 px-3 sm:px-5 transition-colors ${
+      className={`group relative py-4 sm:py-5 px-3 sm:px-5 transition-colors ${
         isUser
           ? 'bg-transparent'
-          : 'bg-zinc-100/70 border-y border-zinc-200/80 dark:bg-[#0D0D0D]/60 dark:border-zinc-800/40'
+          : 'bg-transparent'
       }`}
     >
       <div className="max-w-4xl mx-auto flex gap-3 sm:gap-3.5">
@@ -118,8 +116,9 @@ export function MessageItem({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[11.5px] font-semibold text-zinc-900 dark:text-zinc-200">
-                {isUser ? 'You' : `Zovo${message.actualModel ? ` · ${getModelDisplayName(message.actualModel)} (${message.actualModel})` : ''}`}
+                {isUser ? 'You' : 'Zovo'}
               </span>
+              {!isUser && message.actualModel && <span title={`Model: ${message.actualModel}`} className="text-[11px] text-zinc-500 dark:text-zinc-400">{getModelDisplayName(message.actualModel)}</span>}
               <span className="text-[10.5px] text-zinc-500 dark:text-zinc-500">
                 {new Date(message.createdAt).toLocaleTimeString([], {
                   hour: '2-digit',
@@ -201,30 +200,8 @@ export function MessageItem({
               </div>
             </div>
           ) : (
-            <div className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed break-words prose dark:prose-invert max-w-none">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code({ node, inline, className, children, ...props }: any) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    return !inline ? (
-                      <CodeBlock
-                        language={match ? match[1] : undefined}
-                        value={String(children).replace(/\n$/, '')}
-                      />
-                    ) : (
-                      <code
-                        className="px-1.5 py-0.5 rounded bg-zinc-200/80 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-300/80 dark:border-zinc-700/60 font-mono text-xs"
-                        {...props}
-                      >
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+            <div className="message-markdown text-zinc-800 dark:text-zinc-200">
+              <MessageMarkdown content={message.content} />
 
               {/* Streaming Cursor */}
               {message.status === 'streaming' && (
