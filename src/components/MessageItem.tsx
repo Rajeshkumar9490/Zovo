@@ -15,6 +15,7 @@ import {
   AlertCircle,
   FileText,
 } from 'lucide-react';
+import { getModelDisplayName } from '../lib/models.js';
 import { Message } from '../types.js';
 import { CodeBlock } from './CodeBlock.js';
 import { ZovoLogo } from './ZovoLogo.js';
@@ -117,7 +118,7 @@ export function MessageItem({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[11.5px] font-semibold text-zinc-900 dark:text-zinc-200">
-                {isUser ? 'You' : 'Zovo'}
+                {isUser ? 'You' : `Zovo${message.actualModel ? ` · ${getModelDisplayName(message.actualModel)} (${message.actualModel})` : ''}`}
               </span>
               <span className="text-[10.5px] text-zinc-500 dark:text-zinc-500">
                 {new Date(message.createdAt).toLocaleTimeString([], {
@@ -179,6 +180,7 @@ export function MessageItem({
           {isEditing ? (
             <div className="space-y-2 pt-1">
               <textarea
+                aria-label="Edit your message"
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="w-full p-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-[#121212] dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500 min-h-[90px] resize-y"
@@ -239,7 +241,7 @@ export function MessageItem({
               </p>
               <div className="flex flex-wrap gap-2">
                 {message.sources.map((src, idx) => (
-                  <a
+                  src.kind === 'document' ? <span key={idx} title={src.snippet} className="px-2.5 py-1 rounded-md text-xs border border-zinc-300 dark:border-zinc-700">{src.title}</span> : <a
                     key={idx}
                     href={src.uri}
                     target="_blank"
@@ -253,6 +255,8 @@ export function MessageItem({
               </div>
             </div>
           )}
+
+          {message.notices && message.notices.length > 0 && <div role="status" className="text-xs text-amber-700 dark:text-amber-300 space-y-1">{[...new Set(message.notices)].map((notice, i) => <p key={i}>{notice}</p>)}</div>}
 
           {/* Error Banner */}
           {message.status === 'error' && (

@@ -22,8 +22,8 @@ export const app = express();
 
 // Security & Parsing Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '4mb' }));
+app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 
 // Health Check API
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -77,8 +77,8 @@ app.use('/api/voice', voiceRouter);
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled API Error:', err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error occurred',
+  res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : err.status || 500).json({
+    error: err.code === 'LIMIT_FILE_SIZE' ? 'Upload files smaller than 3 MB.' : err.message || 'Internal server error occurred',
   });
 });
 

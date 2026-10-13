@@ -39,6 +39,7 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
   };
 
   const handleFileUpload = async (file: File) => {
+    if (file.size > 3 * 1024 * 1024) { alert('Upload documents smaller than 3 MB.'); return; }
     if (isGuest && !canUploadFile(1)) {
       onClose();
       openAuthModal(

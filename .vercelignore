@@ -1,0 +1,8 @@
+work/
+data/
+tests/
+evals/
+scripts/
+outputs/
+.env*
+*.log

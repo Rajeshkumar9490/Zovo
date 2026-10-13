@@ -68,4 +68,34 @@ test('editing branches persisted history without changing the original', async (
  assert.match(stream, /event: userMessage/);
 });
 
+test('uploaded text reaches the model, saved instructions work, and stream metadata persists', async () => {
+ const { getGeminiClient } = await import('../server/services/gemini.js');
+ const ai = getGeminiClient();
+ let captured: any;
+ (ai.models as any).generateContentStream = async function* (params: any) { captured = params; yield { text: 'MANGO-742', candidates: [{finishReason:'STOP'}] }; };
+ const guest = await (await request('/api/auth/demo', undefined, {})).json();
+ const other = await (await request('/api/auth/demo', undefined, {})).json();
+ const file = new FormData();
+ file.append('file', new Blob(['Launch code MANGO-742; budget 18400'], {type:'text/plain'}), 'facts.txt');
+ const upload = await fetch(base+'/api/attachments/upload', {method:'POST', headers:{Authorization:`Bearer ${guest.token}`}, body:file});
+ assert.equal(upload.status,201);
+ const { attachment } = await upload.json();
+ const conversation = await (await request('/api/conversations', guest.token, {title:'Saved instructions',systemPrompt:'Always preserve the exact launch code.'})).json();
+ const response = await request('/api/chat', guest.token, {conversationId:conversation.conversation.id,message:'Read the file',attachments:[{id:attachment.id}]});
+ const stream = await response.text();
+ assert.match(JSON.stringify(captured.contents), /MANGO-742/);
+ assert.match(captured.config.systemInstruction, /Always preserve the exact launch code/);
+ assert.match(stream,/event: model/);
+ assert.match(stream,/event: complete/);
+ assert.equal(captured.config.thinkingConfig.thinkingLevel,'MEDIUM');
+ const cross = await request('/api/chat', other.token, {message:'Read it',attachments:[{id:attachment.id}]});
+ assert.equal(cross.status,400);
+ const emptyPrompt = await request('/api/chat',guest.token,{message:'',attachments:[{id:attachment.id}]});
+ assert.equal(emptyPrompt.status,200); await emptyPrompt.text();
+ const missing = await request('/api/chat', guest.token, {message:'From my missing document, give the release date.'});
+ assert.match(await missing.text(), /No matching uploaded document/);
+ const badPassword = await fetch(base+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'test@example.com',name:'Test',password:'x'})});
+ assert.equal(badPassword.status,400);
+});
+
 test.after(() => { server.close(); process.chdir(original); fs.rmSync(scratch, { recursive: true, force: true }); });

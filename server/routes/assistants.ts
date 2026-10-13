@@ -12,13 +12,13 @@ const AssistantSchema = z.object({
   instructions: z.string().min(1, 'Instructions are required'),
   model: z
     .enum([
-      'gemini-3.7-flash',
+      'gemini-3.8-flash',
       'gemini-3.6-flash',
       'gemini-3.1-pro-preview',
       'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
     ])
-    .default('gemini-3.7-flash'),
+    .default('gemini-3.8-flash'),
   suggestedPrompts: z.array(z.string()).optional().default([]),
   avatar: z.string().optional().default('bot'),
 });
@@ -75,7 +75,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       name: name.trim(),
       description: description.trim(),
       instructions: instructions.trim(),
-      model: model || 'gemini-3.7-flash',
+      model: model || 'gemini-3.8-flash',
       suggested_prompts: JSON.stringify(suggestedPrompts),
       avatar: avatar || 'bot',
     });

@@ -1,3 +1,4 @@
+import { extractDocument, chunkDocument, MAX_UPLOAD_BYTES } from '../services/documents.js';
 import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import multer from 'multer';
@@ -9,40 +10,8 @@ const router = express.Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: MAX_UPLOAD_BYTES }, // 20MB
 });
-
-function chunkText(text: string, chunkSize = 600, overlap = 100): string[] {
-  const clean = text.replace(/\r\n/g, '\n').trim();
-  if (clean.length <= chunkSize) return [clean];
-
-  const chunks: string[] = [];
-  let startIndex = 0;
-
-  while (startIndex < clean.length) {
-    let endIndex = startIndex + chunkSize;
-    if (endIndex < clean.length) {
-      // Try to break on newline or space
-      const lastNewline = clean.lastIndexOf('\n', endIndex);
-      if (lastNewline > startIndex + chunkSize / 2) {
-        endIndex = lastNewline;
-      } else {
-        const lastSpace = clean.lastIndexOf(' ', endIndex);
-        if (lastSpace > startIndex + chunkSize / 2) {
-          endIndex = lastSpace;
-        }
-      }
-    }
-    const chunk = clean.slice(startIndex, endIndex).trim();
-    if (chunk.length > 20) {
-      chunks.push(chunk);
-    }
-    startIndex = endIndex - overlap;
-    if (startIndex >= clean.length) break;
-  }
-
-  return chunks;
-}
 
 // GET /api/knowledge - List all user documents
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -87,30 +56,9 @@ router.post('/upload', authenticateToken, usageLimit('knowledge', 20, 60), usage
       return;
     }
 
-    let extractedText = '';
-
-    if (
-      file.mimetype.includes('text') ||
-      file.originalname.endsWith('.txt') ||
-      file.originalname.endsWith('.md') ||
-      file.originalname.endsWith('.csv') ||
-      file.mimetype.includes('json')
-    ) {
-      extractedText = file.buffer.toString('utf-8');
-    } else {
-      // Basic text extraction from binary stream (removing control chars)
-      extractedText = file.buffer
-        .toString('utf-8')
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
-        .replace(/\s+/g, ' ');
-    }
-
-    if (!extractedText.trim()) {
-      res.status(400).json({ error: 'Could not extract readable text from document.' });
-      return;
-    }
-
-    const chunks = chunkText(extractedText);
+    const pages = await extractDocument(file.buffer, file.mimetype, file.originalname);
+    const extractedText = pages.map(p => p.text).join('\n\n');
+    const chunks = chunkDocument(pages);
     const docId = crypto.randomUUID();
 
     const doc = await db.createDocument({
@@ -139,7 +87,7 @@ router.post('/upload', authenticateToken, usageLimit('knowledge', 20, 60), usage
     });
   } catch (error: any) {
     console.error('Knowledge upload error:', error);
-    res.status(500).json({ error: 'Failed to process document for Knowledge Base.' });
+    res.status(400).json({ error: error.message || 'Failed to process document for Knowledge Base.' });
   }
 });
 

@@ -1,3 +1,4 @@
+import { extractDocument, MAX_UPLOAD_BYTES } from '../services/documents.js';
 import { usageLimit } from '../middleware/limits.js';
 import express, { Response } from 'express';
 import multer from 'multer';
@@ -15,7 +16,7 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25 MB max
+    fileSize: MAX_UPLOAD_BYTES, // 25 MB max
   },
   fileFilter: (_req, file, cb) => {
     const allowedMimeTypes = [
@@ -82,6 +83,12 @@ router.post(
         textPreview = file.buffer.toString('utf-8').slice(0, 50000);
       }
 
+      let textContent: string | undefined;
+      if (!isImage && file.mimetype !== 'application/pdf') {
+        const pages = await extractDocument(file.buffer, file.mimetype, file.originalname);
+        textContent = pages.map(p => p.text).join('\n\n');
+      }
+
       // Upload file to Supabase storage (private user path) or local disk
       const uploadResult = await uploadAttachmentFile(
         userId,
@@ -109,6 +116,7 @@ router.post(
           filename: attachment.filename,
           mimeType: attachment.mime_type,
           size: attachment.size,
+          textContent,
           dataUrl: isImage ? dataUrl : undefined,
           base64: isImage ? base64Data : undefined,
           textPreview: isText ? textPreview : undefined,

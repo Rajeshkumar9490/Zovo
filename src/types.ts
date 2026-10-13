@@ -2,6 +2,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 export type GeminiModelId = 
   | 'gemini-3.7-flash'
+  | 'gemini-3.8-flash'
   | 'gemini-3.6-flash'
   | 'gemini-3.1-pro-preview'
   | 'gemini-3.1-flash-lite'
@@ -27,6 +28,9 @@ export interface GroundingSource {
   title?: string;
   uri: string;
   snippet?: string;
+  kind?: 'web' | 'document';
+  documentId?: string;
+  page?: number;
 }
 
 export interface MessageAttachment {
@@ -35,6 +39,7 @@ export interface MessageAttachment {
   mimeType: string;
   size: number;
   dataUrl?: string;
+  textContent?: string;
   storagePath?: string;
 }
 
@@ -50,6 +55,8 @@ export interface Message {
   updatedAt?: number;
   status?: 'sending' | 'streaming' | 'complete' | 'error';
   error?: string;
+  actualModel?: string;
+  notices?: string[];
 }
 
 export interface Conversation {

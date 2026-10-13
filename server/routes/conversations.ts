@@ -57,7 +57,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       id: crypto.randomUUID(),
       user_id: userId,
       title: title?.trim() || 'New Conversation',
-      model: model || 'gemini-3.7-flash',
+      model: model || 'gemini-3.8-flash',
       system_prompt: systemPrompt || '',
       assistant_id: assistantId || '',
       pinned: 0,
@@ -100,8 +100,13 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     const messages = rawMessages.map((m) => {
       let parsedSources = [];
       let parsedAttachments = [];
+      let actualModel: string | undefined;
+      let notices: string[] = [];
       try {
-        parsedSources = JSON.parse(m.sources || '[]');
+        const stored = JSON.parse(m.sources || '[]');
+        parsedSources = Array.isArray(stored) ? stored : stored.items || [];
+        actualModel = stored.actualModel;
+        notices = stored.notices || [];
       } catch {}
       try {
         parsedAttachments = JSON.parse(m.attachments || '[]');
@@ -114,6 +119,8 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
         role: m.role,
         content: m.content,
         sources: parsedSources,
+        actualModel,
+        notices,
         attachments: parsedAttachments,
         createdAt: m.created_at,
         updatedAt: m.updated_at,

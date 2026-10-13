@@ -10,7 +10,7 @@ const router = express.Router();
 
 const RegisterSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(12, 'Password must be at least 12 characters').max(128),
   name: z.string().min(2, 'Name must be at least 2 characters'),
 });
 
@@ -192,6 +192,9 @@ router.patch('/profile', authenticateToken, async (req: AuthRequest, res: Respon
       if (!isMatch) {
         res.status(400).json({ error: 'Current password is incorrect' });
         return;
+      }
+      if (newPassword.length < 12 || newPassword.length > 128) {
+        res.status(400).json({ error: 'Password must be between 12 and 128 characters.' }); return;
       }
       const salt = await bcrypt.genSalt(10);
       updates.password_hash = await bcrypt.hash(newPassword, salt);

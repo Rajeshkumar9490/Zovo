@@ -10,5 +10,11 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 120,
+      "includeFiles": "node_modules/{pdf-parse,pdfjs-dist,@napi-rs/canvas,@napi-rs/canvas-linux-x64-gnu,@napi-rs/canvas-linux-x64-musl}/**"
+    }
+  }
 }
