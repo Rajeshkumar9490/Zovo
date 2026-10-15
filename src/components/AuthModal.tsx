@@ -69,11 +69,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-      <div className="relative w-full max-w-md bg-[#121212] rounded-2xl border border-zinc-800 shadow-2xl p-6 sm:p-7 space-y-5">
+      <div className="relative w-full max-w-md bg-[var(--zovo-surface)] rounded-2xl border border-[var(--zovo-border)] shadow-2xl p-6 sm:p-7 space-y-5">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
+          className="absolute right-4 top-4 p-1.5 rounded-lg text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] transition-colors"
           title="Close modal"
         >
           <X className="w-4 h-4" />
@@ -84,10 +84,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
           <div className="mb-1 flex justify-center">
             <ZovoLogo variant="hero" />
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
+          <h2 className="text-lg sm:text-xl font-bold text-[var(--zovo-text)]">
             {mode === 'login' ? 'Sign in to Zovo' : 'Create your Zovo Account'}
           </h2>
-          <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+          <p className="text-xs text-[var(--zovo-muted)] max-w-xs mx-auto">
             {mode === 'login'
               ? 'Access your full chat history, custom intelligence prompts, and documents'
               : 'Unlock unlimited questions, documents, voice interactions, and models'}
@@ -95,7 +95,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
         </div>
 
         {/* Mode Switcher Tabs */}
-        <div className="flex p-1 rounded-xl bg-zinc-900 border border-zinc-800">
+        <div className="flex p-1 rounded-xl bg-[var(--zovo-surface)] border border-[var(--zovo-border)]">
           <button
             type="button"
             onClick={() => {
@@ -104,8 +104,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
             }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               mode === 'login'
-                ? 'bg-zinc-100 text-zinc-950 shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[var(--zovo-text)] text-[var(--zovo-bg)] shadow-xs'
+                : 'text-[var(--zovo-muted)] hover:text-[var(--zovo-text)]'
             }`}
           >
             Sign In
@@ -118,8 +118,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
             }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               mode === 'register'
-                ? 'bg-zinc-100 text-zinc-950 shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[var(--zovo-text)] text-[var(--zovo-bg)] shadow-xs'
+                : 'text-[var(--zovo-muted)] hover:text-[var(--zovo-text)]'
             }`}
           >
             Create Account
@@ -151,46 +151,46 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'register' && (
             <div className="space-y-1">
-              <label className="text-[11.5px] font-medium text-zinc-300">
+              <label className="text-[11.5px] font-medium text-[var(--zovo-text)]">
                 Full Name
               </label>
               <div className="relative">
-                <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+                <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[var(--zovo-muted)]" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
                   required
-                  className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[#0A0A0A] border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-zinc-700"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[var(--zovo-bg)] border border-[var(--zovo-border)] text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-hidden focus:border-[var(--zovo-muted)]"
                 />
               </div>
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-[11.5px] font-medium text-zinc-300">
+            <label className="text-[11.5px] font-medium text-[var(--zovo-text)]">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+              <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[var(--zovo-muted)]" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
                 required
-                className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[#0A0A0A] border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-zinc-700"
+                className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[var(--zovo-bg)] border border-[var(--zovo-border)] text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-hidden focus:border-[var(--zovo-muted)]"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11.5px] font-medium text-zinc-300">
+            <label className="text-[11.5px] font-medium text-[var(--zovo-text)]">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+              <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[var(--zovo-muted)]" />
               <input
                 type="password"
                 value={password}
@@ -198,7 +198,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
                 placeholder="••••••••"
                 required
                 minLength={mode === 'register' ? 12 : 1}
-                className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[#0A0A0A] border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-zinc-700"
+                className="w-full pl-9 pr-3 py-2 rounded-lg text-xs bg-[var(--zovo-bg)] border border-[var(--zovo-border)] text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-hidden focus:border-[var(--zovo-muted)]"
               />
             </div>
           </div>
@@ -206,7 +206,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-2 px-4 rounded-xl bg-zinc-100 text-zinc-950 text-xs font-semibold hover:bg-white transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full mt-2 py-2 px-4 rounded-xl bg-[var(--zovo-text)] text-[var(--zovo-bg)] text-xs font-semibold hover:bg-[var(--zovo-text)] transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -217,13 +217,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login', reason }: Au
         </form>
 
         {/* Toggle Mode */}
-        <div className="text-center pt-1 border-t border-zinc-800/80">
+        <div className="text-center pt-1 border-t border-[var(--zovo-border)]">
           <button
             onClick={() => {
               setMode(mode === 'login' ? 'register' : 'login');
               setError(null);
             }}
-            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors font-medium"
+            className="text-xs text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] transition-colors font-medium"
           >
             {mode === 'login'
               ? "Don't have an account? Sign up for unlimited access"

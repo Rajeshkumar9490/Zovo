@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { Conversation, Message, GeminiModelId, MessageAttachment, GroundingSource } from '../types.js';
+import { DEFAULT_MODEL_ID, normalizeModelId } from '../lib/models.js';
 import { api, getStoredToken } from '../lib/api.js';
 import { useAuth } from './AuthContext.js';
 
@@ -35,7 +36,7 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, sessionValidationVersion } = useAuth();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
@@ -44,7 +45,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
 
-  const [activeModel, setActiveModel] = useState<GeminiModelId>('gemini-3.8-flash');
+  const [activeModel, setActiveModel] = useState<GeminiModelId>(DEFAULT_MODEL_ID);
   const [searchEnabled, setSearchEnabled] = useState<boolean>(false);
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
 
@@ -54,8 +55,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) return;
     setIsLoadingConversations(true);
     try {
+      const token = getStoredToken();
       const res = await api.getConversations(search);
-      setConversations(res.conversations);
+      if (getStoredToken() === token) setConversations(res.conversations);
     } catch (err) {
       console.error('Failed to fetch conversations:', err);
     } finally {
@@ -64,14 +66,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadConversations();
-    } else {
+    if (isAuthenticated && sessionValidationVersion > 0) {
+      void loadConversations();
+    } else if (!isAuthenticated) {
       setConversations([]);
       setActiveConversation(null);
       setMessages([]);
     }
-  }, [isAuthenticated, loadConversations]);
+  }, [isAuthenticated, sessionValidationVersion, loadConversations]);
 
   const selectConversation = async (id: string) => {
     setIsLoadingMessages(true);
@@ -79,7 +81,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const res = await api.getConversation(id);
       setActiveConversation(res.conversation);
       setMessages(res.messages);
-      setActiveModel(res.conversation.model || 'gemini-3.8-flash');
+      setActiveModel(normalizeModelId(res.conversation.model));
     } catch (err) {
       console.error('Failed to fetch conversation messages:', err);
     } finally {
@@ -92,7 +94,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setConversations((prev) => [res.conversation, ...prev]);
     setActiveConversation(res.conversation);
     setMessages([]);
-    setActiveModel(res.conversation.model || model);
+    setActiveModel(normalizeModelId(res.conversation.model || model));
     return res.conversation;
   };
 

@@ -82,25 +82,25 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-[#121212] rounded-2xl border border-zinc-800 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-[var(--zovo-surface)] rounded-2xl border border-[var(--zovo-border)] shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+        <div className="p-5 border-b border-[var(--zovo-border)] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#181818] border border-zinc-800 flex items-center justify-center text-zinc-200">
+            <div className="w-8 h-8 rounded-lg bg-[var(--zovo-surface)] border border-[var(--zovo-border)] flex items-center justify-center text-[var(--zovo-text)]">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-zinc-100">
+              <h2 className="text-base font-semibold text-[var(--zovo-text)]">
                 Knowledge Base (RAG)
               </h2>
-              <p className="text-xs text-zinc-400">
-                Documents indexed here are automatically retrieved and referenced during Gemini chats
+              <p className="text-xs text-[var(--zovo-muted)]">
+                Documents indexed here are automatically retrieved and referenced during Zovo chats
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
+            className="p-1.5 rounded-lg text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -111,7 +111,7 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
           {/* Upload Drop Area */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-zinc-800 hover:border-zinc-700 rounded-xl p-6 text-center cursor-pointer transition-colors bg-[#0A0A0A] space-y-2"
+            className="border-2 border-dashed border-[var(--zovo-border)] hover:border-[var(--zovo-border)] rounded-xl p-6 text-center cursor-pointer transition-colors bg-[var(--zovo-bg)] space-y-2"
           >
             <input
               ref={fileInputRef}
@@ -125,7 +125,7 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
               accept=".txt,.md,.pdf,.docx,.csv,.json"
               className="hidden"
             />
-            <div className="w-10 h-10 rounded-full bg-[#181818] border border-zinc-800 flex items-center justify-center mx-auto text-zinc-300">
+            <div className="w-10 h-10 rounded-full bg-[var(--zovo-surface)] border border-[var(--zovo-border)] flex items-center justify-center mx-auto text-[var(--zovo-text)]">
               {uploading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
@@ -133,10 +133,10 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
               )}
             </div>
             <div>
-              <p className="text-xs font-semibold text-zinc-200">
+              <p className="text-xs font-semibold text-[var(--zovo-text)]">
                 {uploading ? 'Processing & Indexing Chunks...' : 'Click or drop files to upload'}
               </p>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-[var(--zovo-muted)]">
                 Supports PDF, Markdown (.md), Plain Text (.txt), Word (.docx), CSV & JSON (up to 15MB)
               </p>
             </div>
@@ -159,32 +159,32 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
           {/* Document Search & List */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--zovo-muted)]">
                 Indexed Documents ({documents.length})
               </h3>
               {documents.length > 0 && (
                 <div className="relative w-48">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-zinc-500" />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-[var(--zovo-muted)]" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search docs..."
-                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-md bg-[#0A0A0A] border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:outline-hidden"
+                    className="w-full pl-8 pr-2.5 py-1 text-xs rounded-md bg-[var(--zovo-bg)] border border-[var(--zovo-border)] text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-hidden"
                   />
                 </div>
               )}
             </div>
 
             {loading ? (
-              <div className="py-8 text-center text-zinc-400 text-xs">
+              <div className="py-8 text-center text-[var(--zovo-muted)] text-xs">
                 <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                 <span>Loading indexed documents...</span>
               </div>
             ) : filteredDocs.length === 0 ? (
-              <div className="py-8 text-center border border-zinc-800 rounded-xl p-4 bg-[#0A0A0A]">
-                <FileText className="w-8 h-8 mx-auto text-zinc-600 mb-2" />
-                <p className="text-xs text-zinc-400">
+              <div className="py-8 text-center border border-[var(--zovo-border)] rounded-xl p-4 bg-[var(--zovo-bg)]">
+                <FileText className="w-8 h-8 mx-auto text-[var(--zovo-muted)] mb-2" />
+                <p className="text-xs text-[var(--zovo-muted)]">
                   {search ? 'No matching documents found' : 'No documents in knowledge base yet'}
                 </p>
               </div>
@@ -193,17 +193,17 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
                 {filteredDocs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-zinc-800 bg-[#0A0A0A]"
+                    className="flex items-center justify-between p-3 rounded-xl border border-[var(--zovo-border)] bg-[var(--zovo-bg)]"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[#181818] border border-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--zovo-surface)] border border-[var(--zovo-border)] flex items-center justify-center text-[var(--zovo-muted)] shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-zinc-200 truncate">
+                        <p className="text-xs font-semibold text-[var(--zovo-text)] truncate">
                           {doc.filename}
                         </p>
-                        <p className="text-[11px] text-zinc-500">
+                        <p className="text-[11px] text-[var(--zovo-muted)]">
                           {(doc.size / 1024).toFixed(0)} KB &bull; {doc.chunkCount} chunks &bull;{' '}
                           {new Date(doc.createdAt).toLocaleDateString()}
                         </p>
@@ -212,7 +212,7 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
 
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="p-1.5 text-zinc-400 hover:text-red-400 rounded-lg hover:bg-zinc-800/60 transition-colors"
+                      className="p-1.5 text-[var(--zovo-muted)] hover:text-red-400 rounded-lg hover:bg-[var(--zovo-hover)] transition-colors"
                       title="Delete document"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -225,10 +225,10 @@ export function KnowledgeModal({ isOpen, onClose }: KnowledgeModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-zinc-800 flex justify-end">
+        <div className="p-4 border-t border-[var(--zovo-border)] flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold bg-zinc-100 text-zinc-950 rounded-xl hover:bg-white transition-opacity"
+            className="px-4 py-2 text-xs font-semibold bg-[var(--zovo-text)] text-[var(--zovo-bg)] rounded-xl hover:bg-[var(--zovo-text)] transition-opacity"
           >
             Done
           </button>

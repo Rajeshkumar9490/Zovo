@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, useState, ReactNode } from 'react';
 import { ThemeMode } from '../types.js';
 
 interface ThemeContextType {
@@ -9,17 +9,33 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
+function readSavedTheme(): ThemeMode {
+  try {
     const saved = localStorage.getItem('zovo_theme');
-    return (saved as ThemeMode) || 'dark';
-  });
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+  } catch {
+    // Private browsing and embedded webviews can disable local storage.
+  }
+  return 'dark';
+}
 
-  const [isDark, setIsDark] = useState<boolean>(true);
+function prefersDark(theme: ThemeMode): boolean {
+  return theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
 
-  useEffect(() => {
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setThemeState] = useState<ThemeMode>(readSavedTheme);
+
+  const [isDark, setIsDark] = useState<boolean>(() => prefersDark(theme));
+
+  useLayoutEffect(() => {
     const root = document.documentElement;
-    localStorage.setItem('zovo_theme', theme);
+    try {
+      localStorage.setItem('zovo_theme', theme);
+    } catch {
+      // The selected appearance still applies when persistence is unavailable.
+    }
+    root.style.colorScheme = prefersDark(theme) ? 'dark' : 'light';
 
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -32,6 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
       const listener = (e: MediaQueryListEvent) => {
         setIsDark(e.matches);
+        root.style.colorScheme = e.matches ? 'dark' : 'light';
         if (e.matches) {
           root.classList.add('dark');
         } else {

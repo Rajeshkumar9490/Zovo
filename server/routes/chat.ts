@@ -1,3 +1,4 @@
+import { AVAILABLE_MODEL_IDS, normalizeModelId } from '../../src/lib/models.js';
 import { streamChat, validateHostedRequest } from '../services/providers.js';
 import { resolveAttachments } from '../services/chatAttachments.js';
 import { selectHistory, retrieveKnowledge } from '../services/context.js';
@@ -12,7 +13,7 @@ import {
   extractCleanErrorMessage,
   ChatHistoryMessage,
 } from '../services/gemini.js';
-import { GroundingSource, GeminiModelId } from '../../src/types.js';
+import { GroundingSource } from '../../src/types.js';
 
 const router = express.Router();
 
@@ -20,18 +21,7 @@ const ChatRequestSchema = z.object({
   conversationId: z.string().optional(),
   beforeMessageId: z.string().optional(),
   message: z.string().max(100000).default(''),
-  model: z
-    .enum([
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.6-flash',
-      'gemini-3.1-pro-preview',
-      'gemini-3.1-flash-lite',
-      'gemini-3-flash-preview',
-      'groq/openai/gpt-oss-20b',
-      'openrouter/free',
-    ])
-    .optional(),
+  model: z.enum(AVAILABLE_MODEL_IDS).optional(),
   enableSearch: z.boolean().optional(),
   assistantId: z.string().optional(),
   systemPrompt: z.string().optional(),
@@ -50,7 +40,7 @@ const ChatRequestSchema = z.object({
     .optional(),
 }).refine(value => value.message.trim().length > 0 || (value.attachments?.length || 0) > 0, { message: 'Enter a message or attach a file.' });
 
-// POST /api/chat - Stream conversation with Gemini
+// POST /api/chat - Stream a conversation with the selected hosted model
 router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('guest-chat', 5, 86400, true), async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
 
@@ -90,6 +80,10 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
   let currentAttachments: Awaited<ReturnType<typeof resolveAttachments>>;
   try { currentAttachments = await resolveAttachments(attachments, userId); }
   catch (error: any) { res.status(400).json({ error: error.message }); return; }
+  if (currentAttachments.some(attachment => attachment.mimeType.startsWith('image/'))) {
+    res.status(400).json({ error: 'Zovo Fast and Zovo Flex support text and readable documents. Upload PDF, Word or text files instead of images.' });
+    return;
+  }
   const controller = new AbortController();
   const totalDeadline = setTimeout(() => controller.abort(new Error('Response timed out. Please retry or use a faster mode.')), 90000);
   const disconnected = () => { if (!res.writableEnded) controller.abort(new Error('Response stopped.')); };
@@ -109,10 +103,10 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
 
   try {
     const [userSettings, memories, docs] = await Promise.all([db.getUserSettings(userId), db.getMemories(userId), db.getDocuments(userId)]);
-    const selectedModel = (requestedModel || userSettings.selected_model || 'gemini-3.8-flash') as GeminiModelId;
-    const isSearchEnabled = requestedSearch !== undefined ? requestedSearch : Boolean(userSettings.search_enabled);
+    const selectedModel = normalizeModelId(requestedModel || userSettings.selected_model);
+    const isSearchEnabled = requestedSearch === true;
 
-    if (!selectedModel.startsWith('gemini-')) validateHostedRequest(selectedModel, isSearchEnabled);
+    validateHostedRequest(selectedModel, isSearchEnabled);
 
     // 1. Get or Create Conversation
     let conversationId = beforeMessageId ? undefined : requestedConvId;
@@ -171,21 +165,32 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
     if (history.omittedCount > 0) sendEvent('warning', { message: 'Older conversation details are represented by excerpts. Restate any essential information that is missing.' });
     const attachmentCache = new Map(currentAttachments.map(a => [a.id, a]));
     let historicalFiles = 0;
+    let historicalImagesOmitted = false;
     const reversedHistory: ChatHistoryMessage[] = [];
     for (const m of [...history.recent].reverse()) {
       let references: any[] = [];
       try { references = JSON.parse(m.attachments || '[]'); } catch {}
       const hydrated: any[] = [];
+      let messageImagesOmitted = false;
       for (const reference of references) {
+        if (typeof reference.mimeType === 'string' && reference.mimeType.startsWith('image/')) {
+          historicalImagesOmitted = messageImagesOmitted = true;
+          continue;
+        }
         if (historicalFiles >= 5) { sendEvent('warning', { message: 'Only the five most recent attachments are included. Reattach older files when needed.' }); break; }
         try {
           let attachment = attachmentCache.get(reference.id);
           if (!attachment) { [attachment] = await resolveAttachments([reference], userId); attachmentCache.set(reference.id, attachment); }
+          if (attachment.mimeType.startsWith('image/')) {
+            historicalImagesOmitted = messageImagesOmitted = true;
+            continue;
+          }
           hydrated.push(attachment); historicalFiles++;
         } catch { sendEvent('warning', { message: `An older file (${reference.filename || 'attachment'}) is unavailable. Please reattach it.` }); }
       }
-      reversedHistory.push({ role: m.role as 'user' | 'assistant', content: m.content, attachments: hydrated });
+      reversedHistory.push({ role: m.role as 'user' | 'assistant', content: m.content || (messageImagesOmitted ? '[Earlier image omitted; this mode cannot inspect images.]' : ''), attachments: hydrated });
     }
+    if (historicalImagesOmitted) sendEvent('warning', { message: 'Earlier images were left out because these modes support text and readable documents. Describe any image details needed for this answer.' });
     const formattedHistory = reversedHistory.reverse();
 
     // 4. Gather Knowledge Base & Memory Context
@@ -231,7 +236,7 @@ router.post('/', authenticateToken, usageLimit('chat', 30, 60), usageLimit('gues
     const notices: string[] = [];
     if (knowledge.sources.length) sendEvent('sources', knowledge.sources);
 
-    // Stream from Gemini
+    // Stream from the selected provider
     await streamChat({
       model: selectedModel,
       messages: formattedHistory,

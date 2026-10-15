@@ -1,3 +1,4 @@
+import { isAvailableModel, normalizeModelId } from '../../src/lib/models.js';
 import express, { Response } from 'express';
 import { db } from '../db/index.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
@@ -15,9 +16,9 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         id: s.id,
         userId: s.user_id,
         theme: s.theme,
-        selectedModel: s.selected_model,
+        selectedModel: normalizeModelId(s.selected_model),
         memoryEnabled: Boolean(s.memory_enabled),
-        searchEnabled: Boolean(s.search_enabled),
+        searchEnabled: false,
         temperature: s.temperature,
         systemPrompt: s.system_prompt,
         createdAt: s.created_at,
@@ -36,11 +37,12 @@ router.patch('/', authenticateToken, async (req: AuthRequest, res: Response) => 
     const userId = req.user!.id;
     const { theme, selectedModel, memoryEnabled, searchEnabled, temperature, systemPrompt } = req.body;
 
+    if (selectedModel !== undefined && !isAvailableModel(selectedModel)) { res.status(400).json({ error: 'Choose Zovo Fast or Zovo Flex.' }); return; }
     const updates: any = {};
     if (theme !== undefined) updates.theme = theme;
     if (selectedModel !== undefined) updates.selected_model = selectedModel;
     if (memoryEnabled !== undefined) updates.memory_enabled = memoryEnabled ? 1 : 0;
-    if (searchEnabled !== undefined) updates.search_enabled = searchEnabled ? 1 : 0;
+    updates.search_enabled = 0;
     if (temperature !== undefined) updates.temperature = Math.max(0, Math.min(1, Number(temperature)));
     if (systemPrompt !== undefined) updates.system_prompt = systemPrompt;
 
@@ -51,9 +53,9 @@ router.patch('/', authenticateToken, async (req: AuthRequest, res: Response) => 
         id: updated.id,
         userId: updated.user_id,
         theme: updated.theme,
-        selectedModel: updated.selected_model,
+        selectedModel: normalizeModelId(updated.selected_model),
         memoryEnabled: Boolean(updated.memory_enabled),
-        searchEnabled: Boolean(updated.search_enabled),
+        searchEnabled: false,
         temperature: updated.temperature,
         systemPrompt: updated.system_prompt,
         createdAt: updated.created_at,

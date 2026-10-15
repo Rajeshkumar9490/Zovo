@@ -37,7 +37,7 @@ test('hosted provider errors do not expose returned credentials or switch to a p
   let count = 0;
   await assert.rejects(streamHostedChat({model: 'openrouter/free', messages: [], onChunk() {}}, (async () => {count++; return new Response('secret-provider-debug', {status: 429});}) as typeof fetch), /usage limit/);
   assert.equal(count, 1);
-  await assert.rejects(streamHostedChat({model: 'openrouter/free', messages: [{role: 'user', content: 'Describe', attachments: [{mimeType: 'image/png', base64: 'AA=='}]}], onChunk() {}}, (async () => {count++; return new Response();}) as typeof fetch), /Use a Gemini mode for images/);
+  await assert.rejects(streamHostedChat({model: 'openrouter/free', messages: [{role: 'user', content: 'Describe', attachments: [{mimeType: 'image/png', base64: 'AA=='}]}], onChunk() {}}, (async () => {count++; return new Response();}) as typeof fetch), /Upload a readable document instead of an image/);
   assert.equal(count, 1);
 });
 test.after(() => {if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = oldKey;});

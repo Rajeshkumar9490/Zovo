@@ -1,22 +1,22 @@
+import { normalizeModelId } from '../../src/lib/models.js';
 import { GeminiModelId } from '../../src/types.js';
-import { StreamChatParams, streamGeminiChat, ZOVO_CORE_SYSTEM_PROMPT } from './gemini.js';
+import { StreamChatParams, ZOVO_CORE_SYSTEM_PROMPT } from './gemini.js';
 import { extractDocument } from './documents.js';
 
 export const HOSTED_MODELS = ['groq/openai/gpt-oss-20b', 'openrouter/free'] as const;
 export function providerConfigured(model: string): boolean {
   if (model === HOSTED_MODELS[0]) return Boolean(process.env.GROQ_API_KEY?.trim());
   if (model === HOSTED_MODELS[1]) return Boolean(process.env.OPENROUTER_API_KEY?.trim());
-  return model.startsWith('gemini-') && Boolean(process.env.GEMINI_API_KEY?.trim());
+  return false;
 }
 export function validateHostedRequest(model: string, search?: boolean) {
   if (!(HOSTED_MODELS as readonly string[]).includes(model)) throw new Error('Unknown hosted model.');
   if (!providerConfigured(model)) throw new Error(`${model.startsWith('groq/') ? 'Groq' : 'OpenRouter'} is not configured yet. Ask the app owner to complete provider setup.`);
-  if (search) throw new Error('Web search is available in Gemini modes. Turn search off to use this hosted model.');
+  if (search) throw new Error('Web search is not available in these modes. Turn search off to continue.');
 }
 
 export async function streamChat(params: StreamChatParams): Promise<string> {
-  if (!params.model || params.model.startsWith('gemini-')) return streamGeminiChat(params);
-  return streamHostedChat(params);
+  return streamHostedChat({...params, model: normalizeModelId(params.model)});
 }
 
 export async function streamHostedChat(params: StreamChatParams, request: typeof fetch = fetch): Promise<string> {
@@ -34,7 +34,7 @@ export async function streamHostedChat(params: StreamChatParams, request: typeof
         const encoded = file.base64 || file.dataUrl!.split(',').at(-1)!;
         const pages = await extractDocument(Buffer.from(encoded, 'base64'), file.mimeType, file.filename || 'attachment.pdf');
         documents.push(`Untrusted attachment ${file.filename || 'document'}:\n${pages.map(p => `Page ${p.page}: ${p.text}`).join('\n\n')}`);
-      } else throw new Error('These hosted modes support text, PDF and Word documents. Use a Gemini mode for images.');
+      } else throw new Error('Zovo Fast and Zovo Flex support text, PDF and Word documents. Upload a readable document instead of an image.');
     }
     messages.push({role: item.role, content: [item.content, ...documents].filter(Boolean).join('\n\n')});
   }

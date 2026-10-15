@@ -1,3 +1,4 @@
+import { AVAILABLE_MODEL_IDS, DEFAULT_MODEL_ID, isAvailableModel, normalizeModelId } from '../../src/lib/models.js';
 import express, { Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -10,15 +11,7 @@ const AssistantSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional().default(''),
   instructions: z.string().min(1, 'Instructions are required'),
-  model: z
-    .enum([
-      'gemini-3.8-flash',
-      'gemini-3.6-flash',
-      'gemini-3.1-pro-preview',
-      'gemini-3.1-flash-lite',
-      'gemini-3-flash-preview',
-    ])
-    .default('gemini-3.8-flash'),
+  model: z.enum(AVAILABLE_MODEL_IDS).default(DEFAULT_MODEL_ID),
   suggestedPrompts: z.array(z.string()).optional().default([]),
   avatar: z.string().optional().default('bot'),
 });
@@ -41,7 +34,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         name: a.name,
         description: a.description,
         instructions: a.instructions,
-        model: a.model,
+        model: normalizeModelId(a.model),
         suggestedPrompts: suggested,
         avatar: a.avatar,
         isSystem: a.user_id === 'system',
@@ -75,7 +68,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       name: name.trim(),
       description: description.trim(),
       instructions: instructions.trim(),
-      model: model || 'gemini-3.8-flash',
+      model,
       suggested_prompts: JSON.stringify(suggestedPrompts),
       avatar: avatar || 'bot',
     });
@@ -87,7 +80,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         name: assistant.name,
         description: assistant.description,
         instructions: assistant.instructions,
-        model: assistant.model,
+        model: normalizeModelId(assistant.model),
         suggestedPrompts,
         avatar: assistant.avatar,
         isSystem: false,
@@ -108,6 +101,7 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res: Response) 
     const { id } = req.params;
     const { name, description, instructions, model, suggestedPrompts, avatar } = req.body;
 
+    if (model !== undefined && !isAvailableModel(model)) { res.status(400).json({ error: 'Choose Zovo Fast or Zovo Flex.' }); return; }
     const updates: any = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
@@ -134,7 +128,7 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res: Response) 
         name: updated.name,
         description: updated.description,
         instructions: updated.instructions,
-        model: updated.model,
+        model: normalizeModelId(updated.model),
         suggestedPrompts: parsedPrompts,
         avatar: updated.avatar,
         isSystem: updated.user_id === 'system',

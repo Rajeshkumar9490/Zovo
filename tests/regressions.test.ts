@@ -16,6 +16,18 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-only-secret-for-regression-suite';
 const { app } = await import('../server/app.js');
 const { usageLimit } = await import('../server/middleware/limits.js');
+const nativeFetch = globalThis.fetch;
+let hostedAnswer = 'New answer';
+let capturedHosted: any;
+process.env.GROQ_API_KEY = 'synthetic-test';
+globalThis.fetch = async (input, init) => {
+ if (String(input) === 'https://api.groq.com/openai/v1/chat/completions') {
+  capturedHosted = JSON.parse(String(init?.body));
+  return new Response(`data: ${JSON.stringify({model:'openai/gpt-oss-20b',choices:[{delta:{content:hostedAnswer},finish_reason:'stop'}]})}\n\ndata: [DONE]\n\n`);
+ }
+ return nativeFetch(input, init);
+};
+
 const server = app.listen(0, '127.0.0.1');
 await new Promise<void>(resolve => server.once('listening', resolve));
 const base = `http://127.0.0.1:${(server.address() as any).port}`;
@@ -48,11 +60,7 @@ test('usage counters enforce limits and keep identities separate', async () => {
 
 test('editing branches persisted history without changing the original', async () => {
  const { db } = await import('../server/db/index.js');
- const { getGeminiClient } = await import('../server/services/gemini.js');
- process.env.GEMINI_API_KEY = 'test-placeholder';
- const ai = getGeminiClient();
- (ai.models as any).generateContentStream = async function* () { yield { text: 'New answer' }; };
- (ai.models as any).generateContent = async () => ({ text: 'Branched conversation' });
+ hostedAnswer = 'New answer';
  const guest = await (await request('/api/auth/demo', undefined, {})).json();
  const original = await db.createConversation({ id: 'branch-test', user_id: guest.user.id, title: 'Original', model: 'gemini-3.7-flash', pinned: 0, archived: 0, assistant_id: '', system_prompt: '' });
  for (const [id, role, content] of [['earlier', 'user', 'Keep this'], ['edit-target', 'user', 'Old question'], ['old-answer', 'assistant', 'Old answer']]) {
@@ -69,10 +77,7 @@ test('editing branches persisted history without changing the original', async (
 });
 
 test('uploaded text reaches the model, saved instructions work, and stream metadata persists', async () => {
- const { getGeminiClient } = await import('../server/services/gemini.js');
- const ai = getGeminiClient();
- let captured: any;
- (ai.models as any).generateContentStream = async function* (params: any) { captured = params; yield { text: 'MANGO-742', candidates: [{finishReason:'STOP'}] }; };
+ hostedAnswer = 'MANGO-742';
  const guest = await (await request('/api/auth/demo', undefined, {})).json();
  const other = await (await request('/api/auth/demo', undefined, {})).json();
  const file = new FormData();
@@ -83,11 +88,11 @@ test('uploaded text reaches the model, saved instructions work, and stream metad
  const conversation = await (await request('/api/conversations', guest.token, {title:'Saved instructions',systemPrompt:'Always preserve the exact launch code.'})).json();
  const response = await request('/api/chat', guest.token, {conversationId:conversation.conversation.id,message:'Read the file',attachments:[{id:attachment.id}]});
  const stream = await response.text();
- assert.match(JSON.stringify(captured.contents), /MANGO-742/);
- assert.match(captured.config.systemInstruction, /Always preserve the exact launch code/);
+ assert.match(JSON.stringify(capturedHosted.messages), /MANGO-742/);
+ assert.match(capturedHosted.messages[0].content, /Always preserve the exact launch code/);
  assert.match(stream,/event: model/);
  assert.match(stream,/event: complete/);
- assert.equal(captured.config.thinkingConfig.thinkingLevel,'MEDIUM');
+ assert.equal(capturedHosted.model,'openai/gpt-oss-20b');
  const cross = await request('/api/chat', other.token, {message:'Read it',attachments:[{id:attachment.id}]});
  assert.equal(cross.status,400);
  const emptyPrompt = await request('/api/chat',guest.token,{message:'',attachments:[{id:attachment.id}]});
@@ -98,4 +103,18 @@ test('uploaded text reaches the model, saved instructions work, and stream metad
  assert.equal(badPassword.status,400);
 });
 
-test.after(() => { server.close(); process.chdir(original); fs.rmSync(scratch, { recursive: true, force: true }); });
+test('API catalog and assistant settings accept only the two active hosted models', async () => {
+ const models = await (await request('/api/models')).json();
+ assert.deepEqual(models.models.map((m: any) => m.id), ['groq/openai/gpt-oss-20b','openrouter/free']);
+ const guest = await (await request('/api/auth/demo', undefined, {})).json();
+ const settings = await (await request('/api/settings', guest.token)).json();
+ assert.equal(settings.settings.selectedModel, 'groq/openai/gpt-oss-20b');
+ for (const model of ['groq/openai/gpt-oss-20b', 'openrouter/free']) {
+  const res = await request('/api/assistants', guest.token, {name:'Test', instructions:'Answer clearly', model});
+  assert.equal(res.status, 201); assert.equal((await res.json()).assistant.model, model);
+ }
+ assert.equal((await request('/api/chat', guest.token, {message:'hello',model:'gemini-3.8-flash'})).status,400);
+ assert.equal((await request('/api/assistants', guest.token, {name:'Test',instructions:'test',model:'gemini-3.8-flash'})).status,400);
+});
+
+test.after(() => { globalThis.fetch = nativeFetch; server.close(); process.chdir(original); fs.rmSync(scratch, { recursive: true, force: true }); });

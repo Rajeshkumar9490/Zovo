@@ -9,14 +9,12 @@ import {
   ThumbsDown,
   Edit2,
   ExternalLink,
-  User,
   AlertCircle,
   FileText,
 } from 'lucide-react';
 import { getModelDisplayName } from '../lib/models.js';
 import { Message } from '../types.js';
 import { MessageMarkdown } from './MessageMarkdown.js';
-import { ZovoLogo } from './ZovoLogo.js';
 
 interface MessageItemProps {
   message: Message;
@@ -88,231 +86,63 @@ export function MessageItem({
     }
   };
 
+  const actionClass = 'p-2 rounded-lg text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] transition-colors cursor-pointer';
+
   return (
-    <div
-      className={`group relative py-4 sm:py-5 px-3 sm:px-5 transition-colors ${
-        isUser
-          ? 'bg-transparent'
-          : 'bg-transparent'
-      }`}
-    >
-      <div className="max-w-4xl mx-auto flex gap-3 sm:gap-3.5">
-        {/* Avatar */}
-        <div className="shrink-0 pt-0.5">
-          {isUser ? (
-            <div className="w-7 h-7 rounded-full bg-zinc-200 border border-zinc-300 text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700/60 dark:text-zinc-300 flex items-center justify-center font-medium text-xs shadow-xs">
-              <User className="w-3.5 h-3.5" />
-            </div>
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-white border border-zinc-200 dark:bg-[#090D1A] dark:border-pink-500/25 flex items-center justify-center shadow-xs overflow-hidden">
-              <ZovoLogo className="w-4 h-4" />
-            </div>
-          )}
-        </div>
-
-        {/* Content Body */}
-        <div className="flex-1 min-w-0 space-y-1.5">
-          {/* Header Label */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11.5px] font-semibold text-zinc-900 dark:text-zinc-200">
-                {isUser ? 'You' : 'Zovo'}
-              </span>
-              {!isUser && message.actualModel && <span title={`Model: ${message.actualModel}`} className="text-[11px] text-zinc-500 dark:text-zinc-400">{getModelDisplayName(message.actualModel)}</span>}
-              <span className="text-[10.5px] text-zinc-500 dark:text-zinc-500">
-                {new Date(message.createdAt).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </div>
-
-            {/* User message edit button */}
-            {isUser && !isEditing && onEditAndResend && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200 p-1 rounded transition-opacity cursor-pointer"
-                title="Edit message"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-            )}
+    <article aria-label={isUser ? 'Your message' : 'Zovo response'} className={`group relative px-4 sm:px-6 ${isUser ? 'pt-6 pb-5' : 'pt-3 pb-8'}`}>
+      <div className={`max-w-[800px] mx-auto min-w-0 ${isUser ? 'flex flex-col items-end' : ''}`}>
+        {message.attachments && message.attachments.length > 0 && (
+          <div className={`flex flex-wrap gap-2 mb-3 ${isUser ? 'justify-end' : ''}`}>
+            {message.attachments.map(att => <div key={att.id} className="flex items-center gap-2 rounded-2xl border border-[var(--zovo-border)] bg-[var(--zovo-surface)] p-3 max-w-[260px] text-sm">
+              {att.mimeType.startsWith('image/') && att.dataUrl ? <img src={att.dataUrl} alt={att.filename} className="w-12 h-12 object-cover rounded-lg" /> : <FileText className="w-6 h-6 shrink-0 text-[var(--zovo-muted)]" />}
+              <div className="min-w-0"><p className="truncate text-[var(--zovo-text)]">{att.filename}</p><p className="text-xs text-[var(--zovo-muted)]">{(att.size / 1024).toFixed(0)} KB</p></div>
+            </div>)}
           </div>
+        )}
 
-          {/* Attachments preview */}
-          {message.attachments && message.attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2.5 pt-1">
-              {message.attachments.map((att, i) => {
-                const isImg = att.mimeType.startsWith('image/');
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 p-1.5 rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-[#161616] text-xs shadow-2xs max-w-xs overflow-hidden"
-                  >
-                    {isImg && att.dataUrl ? (
-                      <img
-                        src={att.dataUrl}
-                        alt={att.filename}
-                        referrerPolicy="no-referrer"
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-[#202020] flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                    )}
-                    <div className="truncate">
-                      <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                        {att.filename}
-                      </p>
-                      <p className="text-[10px] text-zinc-500">
-                        {(att.size / 1024).toFixed(0)} KB
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+        {isEditing ? (
+          <div className="w-full rounded-3xl bg-[var(--zovo-composer)] p-4">
+            <textarea aria-label="Edit your message" value={editContent} onChange={e => setEditContent(e.target.value)} className="w-full min-h-24 resize-y bg-transparent text-base text-[var(--zovo-text)] outline-none" />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-full text-sm hover:bg-[var(--zovo-hover)]">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-4 py-2 rounded-full bg-[var(--zovo-text)] text-[var(--zovo-bg)] text-sm font-medium">Send</button>
             </div>
-          )}
+          </div>
+        ) : isUser ? (
+          <div className="max-w-[88%] sm:max-w-[78%] rounded-[24px] bg-[var(--zovo-surface)] px-5 py-3 text-base leading-7 text-[var(--zovo-text)] whitespace-pre-wrap [overflow-wrap:anywhere]">{message.content}</div>
+        ) : (
+          <div className="message-markdown text-[var(--zovo-text)]">
+            <MessageMarkdown content={message.content} />
+            {message.status === 'streaming' && <span aria-label="Generating response" className="inline-block w-2.5 h-2.5 rounded-full ml-1 bg-current animate-pulse" />}
+          </div>
+        )}
 
-          {/* Message Text / Markdown */}
-          {isEditing ? (
-            <div className="space-y-2 pt-1">
-              <textarea
-                aria-label="Edit your message"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-[#121212] dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-1 focus:ring-blue-500 min-h-[90px] resize-y"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="px-3 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 rounded cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="px-3 py-1 text-xs bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white rounded font-medium shadow-xs cursor-pointer"
-                >
-                  Save & Resend
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="message-markdown text-zinc-800 dark:text-zinc-200">
-              <MessageMarkdown content={message.content} />
+        {isUser && !isEditing && onEditAndResend && <div className="mt-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <button onClick={handleCopy} className={actionClass} title="Copy message">{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}</button>
+          <button onClick={() => setIsEditing(true)} className={actionClass} title="Edit message"><Edit2 className="w-4 h-4" /></button>
+        </div>}
 
-              {/* Streaming Cursor */}
-              {message.status === 'streaming' && (
-                <span className="inline-block w-2 h-4 ml-1 bg-blue-500 dark:bg-zinc-100 animate-pulse" />
-              )}
-            </div>
-          )}
+        {message.sources && message.sources.length > 0 && <div className="mt-5 flex flex-wrap gap-2">
+          {message.sources.map((source, index) => source.kind === 'document' ? <span key={index} title={source.snippet} className="px-3 py-1.5 rounded-full border border-[var(--zovo-border)] text-xs text-[var(--zovo-muted)]">{source.title}</span> : <a key={index} href={source.uri} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--zovo-surface)] text-xs text-[var(--zovo-muted)] hover:text-[var(--zovo-text)]"><span className="truncate max-w-[220px]">{source.title || source.uri}</span><ExternalLink className="w-3 h-3" /></a>)}
+        </div>}
 
-          {/* Grounding / Search Sources */}
-          {message.sources && message.sources.length > 0 && (
-            <div className="mt-3.5 pt-3 border-t border-zinc-200 dark:border-zinc-800/80 space-y-2">
-              <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
-                <span>Sources & Citations:</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {message.sources.map((src, idx) => (
-                  src.kind === 'document' ? <span key={idx} title={src.snippet} className="px-2.5 py-1 rounded-md text-xs border border-zinc-300 dark:border-zinc-700">{src.title}</span> : <a
-                    key={idx}
-                    href={src.uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-[#161616] dark:text-zinc-300 dark:hover:bg-[#202020] transition-colors border border-zinc-200 dark:border-zinc-800"
-                  >
-                    <span className="truncate max-w-[200px]">{src.title || src.uri}</span>
-                    <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+        {message.notices && message.notices.length > 0 && <div role="status" className="mt-3 text-xs text-[var(--zovo-muted)] space-y-1">{[...new Set(message.notices)].map((notice, index) => <p key={index}>{notice}</p>)}</div>}
 
-          {message.notices && message.notices.length > 0 && <div role="status" className="text-xs text-amber-700 dark:text-amber-300 space-y-1">{[...new Set(message.notices)].map((notice, i) => <p key={i}>{notice}</p>)}</div>}
+        {message.status === 'error' && <div role="alert" className="mt-3 p-4 rounded-2xl border border-red-400/30 bg-red-400/5 text-sm flex gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />
+          <div><p className="font-medium">Couldn’t complete this answer</p><p className="mt-1 text-[var(--zovo-muted)]">{message.error || 'Please try again.'}</p>
+            {onRegenerate && <button onClick={() => onRegenerate(message.id)} className="inline-flex gap-2 items-center mt-3 rounded-full px-3 py-1.5 bg-[var(--zovo-hover)]"><RotateCcw className="w-3.5 h-3.5" />Retry</button>}
+          </div>
+        </div>}
 
-          {/* Error Banner */}
-          {message.status === 'error' && (
-            <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/40 dark:border-red-900/60 flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500 dark:text-red-400" />
-              <div className="flex-1 space-y-1">
-                <p className="font-semibold text-red-900 dark:text-red-200">Response Interrupted</p>
-                <p className="text-zinc-700 dark:text-zinc-300">{message.error || 'Failed to complete generation. Please try again.'}</p>
-                {onRegenerate && (
-                  <button
-                    id="btn-retry-generation"
-                    onClick={() => onRegenerate(message.id)}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 border border-transparent dark:border-zinc-700 rounded-md font-medium text-xs transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Retry Request</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Assistant Action Bar */}
-          {!isUser && message.status !== 'streaming' && (
-            <div className="flex items-center gap-1 pt-2 text-zinc-400 dark:text-zinc-500">
-              {/* Copy */}
-              <button
-                onClick={handleCopy}
-                className="p-1.5 rounded-md hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                title="Copy response"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-
-              {/* Read aloud TTS */}
-              <button
-                onClick={handleSpeak}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  isSpeaking ? 'text-zinc-900 bg-zinc-200 dark:text-zinc-100 dark:bg-zinc-800' : 'hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
-                }`}
-                title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
-              >
-                {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              </button>
-
-              {/* Regenerate */}
-              {onRegenerate && isLastAssistantMessage && !isStreaming && (
-                <button
-                  onClick={() => onRegenerate(message.id)}
-                  className="p-1.5 rounded-md hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                  title="Regenerate response"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              {/* Thumbs Feedback */}
-              <button
-                onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  feedback === 'up' ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40' : 'hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
-                }`}
-                title="Helpful response"
-              >
-                <ThumbsUp className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  feedback === 'down' ? 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/40' : 'hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
-                }`}
-                title="Not helpful"
-              >
-                <ThumbsDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-        </div>
+        {!isUser && message.status !== 'streaming' && <div className="flex items-center gap-0.5 mt-3 -ml-2" title={message.actualModel ? `${getModelDisplayName(message.actualModel)} · ${message.actualModel}` : 'Zovo'}>
+          <button onClick={handleCopy} className={actionClass} title="Copy response">{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}</button>
+          <button onClick={handleSpeak} className={actionClass} title={isSpeaking ? 'Stop speaking' : 'Read aloud'}>{isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}</button>
+          {onRegenerate && isLastAssistantMessage && !isStreaming && <button onClick={() => onRegenerate(message.id)} className={actionClass} title="Regenerate response"><RotateCcw className="w-4 h-4" /></button>}
+          <button onClick={() => setFeedback(feedback === 'up' ? null : 'up')} aria-pressed={feedback === 'up'} className={`${actionClass} ${feedback === 'up' ? 'bg-[var(--zovo-hover)]' : ''}`} title="Helpful response"><ThumbsUp className="w-4 h-4" /></button>
+          <button onClick={() => setFeedback(feedback === 'down' ? null : 'down')} aria-pressed={feedback === 'down'} className={`${actionClass} ${feedback === 'down' ? 'bg-[var(--zovo-hover)]' : ''}`} title="Not helpful"><ThumbsDown className="w-4 h-4" /></button>
+        </div>}
       </div>
-    </div>
+    </article>
   );
 }

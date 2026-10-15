@@ -22,21 +22,26 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const followResponseRef = useRef(true);
+  const previousLengthRef = useRef(0);
 
   const scrollToBottom = (smooth = true) => {
-    bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    followResponseRef.current = true;
+    const container = containerRef.current;
+    container?.scrollTo({top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto'});
   };
 
   useEffect(() => {
-    if (isStreaming || messages.length > 0) {
-      scrollToBottom(false);
-    }
+    if (messages.length !== previousLengthRef.current && messages.at(-1)?.role === 'user') followResponseRef.current = true;
+    if (followResponseRef.current) scrollToBottom(false);
+    previousLengthRef.current = messages.length;
   }, [messages, isStreaming]);
 
   const handleScroll = () => {
     if (!containerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+    followResponseRef.current = distanceToBottom < 100;
     setShowScrollBottom(distanceToBottom > 200);
   };
 
@@ -51,10 +56,13 @@ export function MessageList({
   return (
     <div
       ref={containerRef}
+      role="log"
+      aria-label="Conversation"
+      tabIndex={0}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto relative divide-y divide-neutral-100/50 dark:divide-neutral-800/40"
+      className="flex-1 min-h-0 overflow-y-auto relative scroll-smooth [scrollbar-gutter:stable]"
     >
-      <div className="py-4">
+      <div className="pt-4 pb-6">
         {messages.map((message, index) => {
           const isLastAssistant =
             message.role === 'assistant' &&
@@ -78,7 +86,7 @@ export function MessageList({
       {showScrollBottom && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="fixed bottom-24 right-8 z-30 p-2 rounded-full bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 shadow-md border border-neutral-200 dark:border-neutral-700 hover:scale-105 transition-all"
+          className="sticky bottom-4 left-1/2 -translate-x-1/2 z-30 p-2.5 rounded-full bg-[var(--zovo-bg)] text-[var(--zovo-text)] border border-[var(--zovo-border)] hover:bg-[var(--zovo-hover)] transition-colors"
           title="Scroll to bottom"
         >
           <ArrowDown className="w-4 h-4" />

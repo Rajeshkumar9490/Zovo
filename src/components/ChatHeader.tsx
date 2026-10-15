@@ -1,12 +1,6 @@
-import {
-  Download,
-  Menu,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { ChevronDown, Menu, Moon, Settings, Sparkles, Sun } from 'lucide-react';
 import { Conversation, GeminiModelId, Message } from '../types.js';
 import { useTheme } from '../context/ThemeContext.js';
-import { ZovoLogo } from './ZovoLogo.js';
 
 interface ChatHeaderProps {
   activeConversation: Conversation | null;
@@ -23,76 +17,52 @@ interface ChatHeaderProps {
   onOpenPrompts: () => void;
   onOpenAssistants: () => void;
   onOpenSettings: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export function ChatHeader({
-  activeConversation: _,
-  messages: __,
-  activeModel: ___,
-  onSelectModel: ____,
-  searchEnabled: _____,
-  onToggleSearch: ______,
-  onTogglePin: _______,
-  onRename: ________,
-  onDelete: _________,
-  onToggleSidebar,
-  onOpenKnowledge: __________,
-  onOpenPrompts: ___________,
-  onOpenAssistants,
-  onOpenSettings: ____________,
-}: ChatHeaderProps) {
+export function ChatHeader({ activeConversation, onToggleSidebar, onOpenAssistants, onOpenSettings, sidebarCollapsed = false }: ChatHeaderProps) {
   const { isDark, setTheme } = useTheme();
+  const actionClass = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--zovo-muted)] transition-colors hover:bg-[var(--zovo-hover)] hover:text-[var(--zovo-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--zovo-muted)]';
 
   return (
-    <header className="h-14 px-4 sm:px-6 flex items-center justify-between z-20 shrink-0 select-none bg-transparent">
-      {/* Left: Mobile Sidebar toggle */}
-      <div className="flex items-center gap-2">
+    <header className="relative z-20 flex h-16 shrink-0 select-none items-center justify-between gap-3 bg-transparent px-3 sm:px-5">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors"
-          title="Toggle sidebar"
+          className={`${actionClass} ${sidebarCollapsed ? '' : 'lg:hidden'}`}
+          title="Open sidebar"
+          aria-label="Open sidebar"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="h-5 w-5" />
         </button>
+        <button
+          onClick={onOpenAssistants}
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[19px] font-medium tracking-tight text-[var(--zovo-text)] transition-colors hover:bg-[var(--zovo-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--zovo-muted)]"
+          aria-label="Zovo assistants"
+          title="Choose an assistant"
+        >
+          Zovo <ChevronDown className="h-4 w-4 text-[var(--zovo-muted)]" />
+        </button>
+        <span className="hidden min-w-0 truncate text-sm text-[var(--zovo-muted)] md:block" title={activeConversation?.title}>
+          {activeConversation?.title || 'New chat'}
+        </span>
       </div>
-
-      {/* Right Floating Pill Toolbar matching exact screenshot */}
-      <div className="flex items-center">
-        <div className="rounded-full bg-white/90 border border-zinc-200/90 text-zinc-700 dark:bg-[#14151B]/90 dark:border-white/10 dark:text-zinc-300 px-3.5 py-1.5 flex items-center gap-3.5 backdrop-blur-md shadow-md dark:shadow-lg transition-colors">
-          {/* Download Project ZIP */}
-          <a
-            href="/api/download-zip"
-            download="zovo-project.zip"
-            className="text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-colors p-0.5 cursor-pointer flex items-center justify-center"
-            title="Download Project ZIP"
-          >
-            <Download className="w-4 h-4" />
-          </a>
-
-          {/* Zovo Brand Emblem / Sparks */}
-          <button
-            onClick={onOpenAssistants}
-            className="text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-colors relative group p-0.5 cursor-pointer flex items-center justify-center"
-            title="Zovo Intelligence & Sparks"
-          >
-            <ZovoLogo className="w-4.5 h-4.5" />
-          </button>
-
-          {/* Moon / Sun Theme Toggle */}
-          <button
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-colors p-0.5 cursor-pointer"
-            title={isDark ? 'Switch to normal light theme' : 'Switch to dark theme'}
-          >
-            {isDark ? (
-              <Moon className="w-4 h-4 text-zinc-300 hover:text-white" />
-            ) : (
-              <Sun className="w-4 h-4 text-zinc-700 hover:text-zinc-950" />
-            )}
-          </button>
-        </div>
+      <div className="flex shrink-0 items-center gap-0.5">
+        <button onClick={onOpenAssistants} className={actionClass} title="Assistants" aria-label="Open assistants">
+          <Sparkles className="h-[18px] w-[18px]" />
+        </button>
+        <button
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          className={actionClass}
+          title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+        </button>
+        <button onClick={onOpenSettings} className={actionClass} title="Settings" aria-label="Open settings">
+          <Settings className="h-[18px] w-[18px]" />
+        </button>
       </div>
     </header>
   );
 }
-
