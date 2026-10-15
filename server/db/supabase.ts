@@ -48,9 +48,12 @@ export class SupabaseDatabase implements IDatabase {
       .from('users')
       .select('*')
       .eq('id', id)
+      .abortSignal(AbortSignal.timeout(5000))
       .maybeSingle();
 
-    if (error || !data) return undefined;
+    // An unavailable database must not look like a deleted account to auth.
+    if (error) throw new Error('Account verification is temporarily unavailable.');
+    if (!data) return undefined;
     return data as UserRow;
   }
 
@@ -83,7 +86,7 @@ export class SupabaseDatabase implements IDatabase {
       id: crypto.randomUUID(),
       user_id: newUser.id,
       theme: 'system',
-      selected_model: 'gemini-3.8-flash',
+      selected_model: 'groq/openai/gpt-oss-20b',
       memory_enabled: 1,
       search_enabled: 0,
       temperature: 0.7,
@@ -384,7 +387,7 @@ export class SupabaseDatabase implements IDatabase {
       id: crypto.randomUUID(),
       user_id: userId,
       theme: 'system',
-      selected_model: 'gemini-3.8-flash',
+      selected_model: 'groq/openai/gpt-oss-20b',
       memory_enabled: 1,
       search_enabled: 0,
       temperature: 0.7,

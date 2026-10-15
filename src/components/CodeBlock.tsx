@@ -18,14 +18,14 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
   const displayLang = language || 'code';
 
   return (
-    <div className="relative my-3 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-900 text-zinc-200 text-sm font-mono">
-      <div className="flex items-center justify-between px-3.5 py-2 bg-zinc-950 border-b border-zinc-800 text-xs text-zinc-400">
-        <span className="font-medium text-zinc-300">
+    <div className="zovo-code-block relative my-4 min-w-0 rounded-xl overflow-hidden border border-[var(--zovo-border)] bg-[var(--zovo-surface)] text-[var(--zovo-text)] text-sm font-mono">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--zovo-border)] text-xs text-[var(--zovo-muted)]">
+        <span className="font-medium">
           {displayLang}
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+          className="flex min-h-9 items-center gap-1.5 px-2 py-1 rounded-md hover:bg-[var(--zovo-hover)] text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--zovo-muted)] transition-colors cursor-pointer"
           title="Copy code to clipboard"
         >
           {copied ? (
@@ -42,7 +42,7 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
         </button>
       </div>
       <div className="p-4 overflow-x-auto">
-        <pre className="m-0 leading-relaxed font-mono text-zinc-200">
+        <pre className="m-0 leading-relaxed font-mono text-[var(--zovo-text)]">
           <code>{value}</code>
         </pre>
       </div>

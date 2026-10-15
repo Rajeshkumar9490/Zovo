@@ -1,24 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { ChatProvider, useChat } from './context/ChatContext.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ChatHeader } from './components/ChatHeader.js';
-import { MessageList } from './components/MessageList.js';
 import { EmptyState } from './components/EmptyState.js';
 import { ChatInput } from './components/ChatInput.js';
-import { LandingPage } from './components/LandingPage.js';
-import { AuthModal } from './components/AuthModal.js';
-import { KnowledgeModal } from './components/KnowledgeModal.js';
-import { PromptLibraryModal } from './components/PromptLibraryModal.js';
-import { AssistantModal } from './components/AssistantModal.js';
-import { SettingsModal } from './components/SettingsModal.js';
 import { AssistantItem } from './types.js';
+
+const MessageList = lazy(() => import('./components/MessageList.js').then(module => ({default: module.MessageList})));
+const LandingPage = lazy(() => import('./components/LandingPage.js').then(module => ({default: module.LandingPage})));
+const AuthModal = lazy(() => import('./components/AuthModal.js').then(module => ({default: module.AuthModal})));
+const KnowledgeModal = lazy(() => import('./components/KnowledgeModal.js').then(module => ({default: module.KnowledgeModal})));
+const PromptLibraryModal = lazy(() => import('./components/PromptLibraryModal.js').then(module => ({default: module.PromptLibraryModal})));
+const AssistantModal = lazy(() => import('./components/AssistantModal.js').then(module => ({default: module.AssistantModal})));
+const SettingsModal = lazy(() => import('./components/SettingsModal.js').then(module => ({default: module.SettingsModal})));
 
 function MainApp() {
   const {
     isAuthenticated,
     isLoading,
+    startupError: sessionError,
+    retrySession,
     demoLogin,
     authModalOpen,
     authModalMode,
@@ -51,6 +54,7 @@ function MainApp() {
   } = useChat();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [knowledgeModalOpen, setKnowledgeModalOpen] = useState(false);
   const [promptsModalOpen, setPromptsModalOpen] = useState(false);
   const [assistantsModalOpen, setAssistantsModalOpen] = useState(false);
@@ -82,22 +86,32 @@ function MainApp() {
   // If session is loading
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F6F7FA] dark:bg-[#0A0A0A] text-zinc-700 dark:text-zinc-300">
+      <div className="zovo-app h-dvh w-full flex items-center justify-center bg-[var(--zovo-bg)] text-[var(--zovo-text)]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 animate-pulse" />
-          <span className="text-xs font-semibold tracking-wider text-zinc-500">STARTING ZOVO...</span>
+          <div className="w-8 h-8 rounded-xl bg-[var(--zovo-text)] animate-pulse" />
+          <span className="text-xs font-medium text-[var(--zovo-muted)]">Starting Zovo…</span>
         </div>
       </div>
     );
   }
 
+  if (!isAuthenticated && sessionError) {
+    return <div className="zovo-app min-h-dvh flex items-center justify-center bg-[var(--zovo-bg)] p-6 text-[var(--zovo-text)]">
+      <div role="alert" className="max-w-sm text-center space-y-4">
+        <h1 className="text-xl font-semibold">Let’s reconnect</h1>
+        <p className="text-sm text-zinc-500">{sessionError}</p>
+        <button onClick={retrySession} className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-5 py-2.5 text-sm font-medium">Try again</button>
+      </div>
+    </div>;
+  }
+
   if (!isAuthenticated) {
     return <>
-      <LandingPage onOpenAuth={openAuthModal} onStartDemo={startDemo} />
+      <Suspense fallback={<div className="min-h-dvh bg-[var(--zovo-bg)]" />}><LandingPage onOpenAuth={openAuthModal} onStartDemo={startDemo} /></Suspense>
       {startupError && <div role="alert" className="fixed bottom-16 inset-x-4 mx-auto max-w-lg rounded-xl bg-red-950 text-white p-4 text-center">
         {startupError} <button onClick={() => startDemo()} className="underline ml-2">Retry</button>
       </div>}
-      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialMode={authModalMode} reason={authModalReason} />
+      {authModalOpen && <Suspense fallback={null}><AuthModal isOpen onClose={closeAuthModal} initialMode={authModalMode} reason={authModalReason} /></Suspense>}
     </>;
   }
 
@@ -110,7 +124,7 @@ function MainApp() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#F6F7FA] text-zinc-800 dark:bg-[#0A0A0A] dark:text-zinc-300 font-sans selection:bg-zinc-300 dark:selection:bg-zinc-800 selection:text-zinc-900 dark:selection:text-zinc-100 transition-colors">
+    <div className="zovo-app h-dvh w-full flex overflow-hidden bg-[var(--zovo-bg)] text-[var(--zovo-text)] font-sans transition-colors">
       {/* Sidebar */}
       <Sidebar
         conversations={conversations}
@@ -122,6 +136,8 @@ function MainApp() {
         onTogglePin={togglePinConversation}
         onToggleArchive={toggleArchiveConversation}
         isOpen={sidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(collapsed => !collapsed)}
         onClose={() => setSidebarOpen(false)}
         onOpenKnowledge={() => setKnowledgeModalOpen(true)}
         onOpenPrompts={() => setPromptsModalOpen(true)}
@@ -130,10 +146,7 @@ function MainApp() {
       />
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col min-w-0 h-full lg:pl-64 relative bg-[#F8F9FC] dark:bg-[#090A0F] transition-colors overflow-hidden">
-        {/* Deep ambient backdrop glow in dark mode */}
-        <div className="hidden dark:block absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-[#101F48]/40 via-[#090A0F]/60 to-[#090A0F]" />
-
+      <div className={`zovo-workspace flex-1 flex flex-col min-w-0 h-full relative bg-[var(--zovo-bg)] transition-[padding] duration-200 overflow-hidden ${sidebarCollapsed ? 'lg:pl-0' : 'lg:pl-[280px]'}`}>
         <ChatHeader
           activeConversation={activeConversation}
           messages={messages}
@@ -144,16 +157,21 @@ function MainApp() {
           onTogglePin={() => activeConversation && togglePinConversation(activeConversation.id)}
           onRename={(title) => activeConversation && renameConversation(activeConversation.id, title)}
           onDelete={() => activeConversation && deleteConversation(activeConversation.id)}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleSidebar={() => { setSidebarOpen(!sidebarOpen); setSidebarCollapsed(false); }}
+          sidebarCollapsed={sidebarCollapsed}
           onOpenKnowledge={() => setKnowledgeModalOpen(true)}
           onOpenPrompts={() => setPromptsModalOpen(true)}
           onOpenAssistants={() => setAssistantsModalOpen(true)}
           onOpenSettings={() => setSettingsModalOpen(true)}
         />
 
+        {sessionError && <div role="status" className="relative z-10 mx-4 mt-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-4 py-2 text-xs text-amber-900 dark:text-amber-200">
+          {sessionError} <button onClick={retrySession} className="underline ml-2">Retry connection</button>
+        </div>}
+
         {/* Content Area: When empty, centered together; when messages exist, standard feed + bottom input */}
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center items-center px-4 max-w-4xl w-full mx-auto pb-16">
+          <div className="flex-1 flex flex-col justify-center items-center px-4 max-w-[832px] w-full mx-auto pb-12 sm:pb-16">
             <EmptyState onSelectPrompt={sendMessage} />
             <div className="w-full mt-4">
               <ChatInput
@@ -173,13 +191,15 @@ function MainApp() {
         ) : (
           <>
             {/* Message Feed */}
-            <MessageList
-              messages={messages}
-              isStreaming={isStreaming}
-              onSendMessage={sendMessage}
-              onRegenerate={regenerateResponse}
-              onEditAndResend={editAndResendMessage}
-            />
+            <Suspense fallback={<div role="status" className="flex-1 p-6 text-sm text-zinc-500">Loading messages…</div>}>
+              <MessageList
+                messages={messages}
+                isStreaming={isStreaming}
+                onSendMessage={sendMessage}
+                onRegenerate={regenerateResponse}
+                onEditAndResend={editAndResendMessage}
+              />
+            </Suspense>
 
             {/* Chat Input */}
             <ChatInput
@@ -198,37 +218,39 @@ function MainApp() {
         )}
       </div>
 
-      {/* Modals */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={closeAuthModal}
-        initialMode={authModalMode}
-        reason={authModalReason}
-      />
+      {/* Load each dialog only when opened. */}
+      <Suspense fallback={null}>
+        {authModalOpen && <AuthModal
+          isOpen={authModalOpen}
+          onClose={closeAuthModal}
+          initialMode={authModalMode}
+          reason={authModalReason}
+        />}
 
-      <KnowledgeModal
-        isOpen={knowledgeModalOpen}
-        onClose={() => setKnowledgeModalOpen(false)}
-      />
+        {knowledgeModalOpen && <KnowledgeModal
+          isOpen={knowledgeModalOpen}
+          onClose={() => setKnowledgeModalOpen(false)}
+        />}
 
-      <PromptLibraryModal
-        isOpen={promptsModalOpen}
-        onClose={() => setPromptsModalOpen(false)}
-        onUsePrompt={(content) => {
-          sendMessage(content);
-        }}
-      />
+        {promptsModalOpen && <PromptLibraryModal
+          isOpen={promptsModalOpen}
+          onClose={() => setPromptsModalOpen(false)}
+          onUsePrompt={(content) => {
+            sendMessage(content);
+          }}
+        />}
 
-      <AssistantModal
-        isOpen={assistantsModalOpen}
-        onClose={() => setAssistantsModalOpen(false)}
-        onSelectAssistant={handleSelectAssistant}
-      />
+        {assistantsModalOpen && <AssistantModal
+          isOpen={assistantsModalOpen}
+          onClose={() => setAssistantsModalOpen(false)}
+          onSelectAssistant={handleSelectAssistant}
+        />}
 
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-      />
+        {settingsModalOpen && <SettingsModal
+          isOpen={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+        />}
+      </Suspense>
     </div>
   );
 }

@@ -2,6 +2,13 @@ import { User, Conversation, Message, UserSettings, KnowledgeDocument, PromptIte
 
 const TOKEN_KEY = 'zovo_auth_token';
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -40,7 +47,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       errorMessage = response.statusText || errorMessage;
     }
-    throw new Error(errorMessage);
+    throw new ApiError(errorMessage, response.status);
   }
 
   return response.json() as Promise<T>;
@@ -68,8 +75,8 @@ export const api = {
     });
   },
 
-  async getMe() {
-    return request<{ user: User }>('/api/auth/me');
+  async getMe(signal?: AbortSignal) {
+    return request<{ user: User }>('/api/auth/me', { signal });
   },
 
   async updateProfile(data: { name?: string; avatar?: string; currentPassword?: string; newPassword?: string }) {

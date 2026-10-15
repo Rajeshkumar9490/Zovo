@@ -1,25 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  Plus,
-  Search,
-  MessageSquare,
-  Pin,
-  Trash2,
-  Edit2,
-  BookOpen,
-  LayoutGrid,
-  ChevronDown,
-  ChevronRight,
-  PanelLeft,
-  SquarePen,
-  Archive,
-  BookMarked,
-  Sparkles,
-  Settings,
-  LogIn,
-  UserPlus,
-  LogOut,
-  UserCheck,
+  Archive, BookOpen, BookMarked, ChevronDown, Edit2, LogIn, LogOut, MoreHorizontal,
+  PanelLeft, Pin, Search, Settings, Sparkles, SquarePen, Trash2, UserCheck, UserPlus, X,
 } from 'lucide-react';
 import { Conversation } from '../types.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -39,363 +21,210 @@ interface SidebarProps {
   onOpenPrompts: () => void;
   onOpenAssistants: () => void;
   onOpenSettings: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function Sidebar({
-  conversations,
-  activeConversation,
-  onSelectConversation,
-  onNewChat,
-  onDeleteConversation,
-  onRenameConversation,
-  onTogglePin,
-  onToggleArchive,
-  isOpen,
-  onClose,
-  onOpenKnowledge,
-  onOpenPrompts,
-  onOpenAssistants,
-  onOpenSettings,
+  conversations, activeConversation, onSelectConversation, onNewChat, onDeleteConversation,
+  onRenameConversation, onTogglePin, onToggleArchive, isOpen, onClose, onOpenKnowledge,
+  onOpenPrompts, onOpenAssistants, onOpenSettings, isCollapsed = false, onToggleCollapse,
 }: SidebarProps) {
   const { user, isGuest, logout, openAuthModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'zovo-beta'>('chat');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [chatsOpen, setChatsOpen] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [conversationMenuId, setConversationMenuId] = useState<string | null>(null);
+  const [conversationMenuTop, setConversationMenuTop] = useState(0);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const conversationMenuRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
-  // Close account menu when clicked outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    }
-    if (accountMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [accountMenuOpen]);
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
 
-  // Sample default conversations if user doesn't have any yet
-  const defaultChats: Array<{ id: string; title: string; pinned?: boolean }> = [
-    { id: 'sample-1', title: 'Enhancing Personal Projects With AI' },
-    { id: 'sample-2', title: 'Setting Up Your Personal Assistant' },
-    { id: 'sample-3', title: 'Beginner Home Strength Workout Plan' },
-  ];
+  useEffect(() => {
+    if (!accountMenuOpen && !conversationMenuId) return;
+    const closeOutside = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+      if (!conversationMenuRef.current?.contains(event.target as Node)) setConversationMenuId(null);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { setAccountMenuOpen(false); setConversationMenuId(null); }
+    };
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountMenuOpen, conversationMenuId]);
 
-  const displayedConversations = useMemo(() => {
-    if (conversations.length > 0) {
-      return conversations.filter(
-        (c) => !c.archived && c.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    return defaultChats.filter((c) =>
-      c.title.toLowerCase().includes(searchQuery.toLowerCase())
-    ) as any[];
-  }, [conversations, searchQuery]);
+  useEffect(() => {
+    if (!isOpen || window.matchMedia('(min-width: 1024px)').matches) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    asideRef.current?.querySelector<HTMLElement>('button')?.focus();
+    const handleKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') closeRef.current();
+      if (event.key !== 'Tab') return;
+      const controls = asideRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex="0"]');
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => { document.removeEventListener('keydown', handleKey); previousFocus?.focus(); };
+  }, [isOpen]);
 
-  const handleSaveRename = (id: string) => {
-    if (editTitle.trim()) {
-      onRenameConversation(id, editTitle.trim());
-    }
+  const displayedConversations = useMemo(() => conversations.filter(
+    conversation => !conversation.archived && conversation.title.toLowerCase().includes(searchQuery.toLowerCase())
+  ), [conversations, searchQuery]);
+
+  const closeOnMobile = () => { if (window.innerWidth < 1024) onClose(); };
+  const openWorkspacePanel = (open: () => void) => { setAccountMenuOpen(false); open(); closeOnMobile(); };
+  const saveRename = (id: string) => {
+    if (editTitle.trim()) onRenameConversation(id, editTitle.trim());
     setEditingId(null);
   };
-
   const displayName = !isGuest && user?.name && user.name !== 'Guest' ? user.name : 'Guest';
   const initial = displayName.charAt(0).toUpperCase() || 'G';
+  const rowClass = 'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[15px] text-[var(--zovo-text)] transition-colors hover:bg-[var(--zovo-hover)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--zovo-muted)]';
+  const menuItemClass = 'flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] focus-visible:outline-2 focus-visible:outline-[var(--zovo-muted)]';
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 lg:hidden"
-        />
-      )}
-
-      {/* Sidebar Panel */}
+      {isOpen && <button type="button" onClick={onClose} aria-label="Close sidebar" className="fixed inset-0 z-30 bg-black/45 lg:hidden" />}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-[#F0F2F6] text-zinc-800 border-r border-zinc-200/90 dark:bg-[#090A0F] dark:text-zinc-200 dark:border-white/5 flex flex-col transition-all duration-200 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        ref={asideRef}
+        aria-label="Chat sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-[min(280px,calc(100vw-48px))] flex-col border-r border-[var(--zovo-border)] bg-[var(--zovo-sidebar)] text-[var(--zovo-text)] transition-[transform,visibility] duration-200 lg:w-[280px] ${isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'} ${isCollapsed ? 'lg:invisible lg:-translate-x-full' : 'lg:visible lg:translate-x-0'}`}
       >
-        {/* Top Header: macOS Traffic Lights & Panel Toggle */}
-        <div className="pt-3 px-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#FF5F56] shadow-xs cursor-pointer" />
-            <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-xs cursor-pointer" />
-            <div className="w-3 h-3 rounded-full bg-[#27C93F] shadow-xs cursor-pointer" />
-          </div>
-
+        <div className="flex h-16 shrink-0 items-center justify-between px-5">
+          <span className="text-[20px] font-semibold tracking-tight">Zovo</span>
           <button
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors p-1 rounded-md cursor-pointer"
-            title="Toggle sidebar"
+            onClick={() => { if (window.innerWidth >= 1024 && onToggleCollapse) onToggleCollapse(); else onClose(); }}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--zovo-muted)] hover:bg-[var(--zovo-hover)] hover:text-[var(--zovo-text)] focus-visible:outline-2 focus-visible:outline-[var(--zovo-muted)]"
+            title="Close sidebar"
+            aria-label="Close sidebar"
           >
-            <PanelLeft className="w-4 h-4" />
+            <PanelLeft className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Top Switcher: Chat / Zovo Beta */}
-        <div className="px-3 pt-1 pb-2">
-          <div className="p-1 rounded-full bg-zinc-200/80 dark:bg-[#121319] flex items-center justify-between transition-colors">
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`flex-1 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activeTab === 'chat'
-                  ? 'bg-white text-zinc-900 shadow-xs dark:bg-[#22242D] dark:text-white'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              Chat
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('zovo-beta');
-                onOpenAssistants();
-              }}
-              className={`flex-1 py-1.5 rounded-full text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'zovo-beta'
-                  ? 'bg-white text-zinc-900 shadow-xs dark:bg-[#22242D] dark:text-white'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              <span>Zovo</span>
-              <span className="text-[9px] uppercase tracking-wider font-bold text-pink-600 bg-pink-100 dark:text-pink-400 dark:bg-pink-950/60 px-1 rounded">
-                BETA
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="px-3 pb-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400 dark:text-zinc-500" />
+        <nav aria-label="Workspace" className="space-y-0.5 px-3 pb-4">
+          <button onClick={() => { onNewChat(); closeOnMobile(); }} className={rowClass}>
+            <SquarePen className="h-[18px] w-[18px] shrink-0" /> New chat
+          </button>
+          <button onClick={() => setSearchOpen(open => !open)} className={rowClass} aria-expanded={searchOpen} aria-controls="sidebar-chat-search">
+            <Search className="h-[18px] w-[18px] shrink-0" /> Search chats
+          </button>
+          {searchOpen && <div id="sidebar-chat-search" className="relative py-1">
             <input
-              type="text"
+              ref={searchRef}
+              type="search"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search"
-              className="w-full pl-8.5 pr-3 py-1.5 rounded-full text-xs bg-white border border-zinc-200 text-zinc-900 placeholder-zinc-400 dark:bg-[#121319] dark:border-white/5 dark:text-zinc-200 dark:placeholder-zinc-500 focus:outline-hidden focus:border-blue-500 transition-colors shadow-2xs"
+              onChange={event => setSearchQuery(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Escape') { setSearchQuery(''); setSearchOpen(false); } }}
+              placeholder="Search your chats"
+              aria-label="Search your chats"
+              className="h-10 w-full rounded-lg border border-[var(--zovo-border)] bg-[var(--zovo-bg)] px-3 pr-9 text-sm text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-2 focus:outline-[var(--zovo-muted)]"
             />
-          </div>
-        </div>
-
-        {/* Primary Action Buttons */}
-        <div className="px-3 space-y-1 pb-3">
-          {/* New Chat Button */}
-          <button
-            onClick={() => {
-              onNewChat();
-              if (window.innerWidth < 1024) onClose();
-            }}
-            className="w-full flex items-center gap-3 px-3.5 py-2 rounded-full bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200/80 shadow-2xs dark:border-transparent dark:bg-[#121319] dark:hover:bg-[#1A1B24] dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <SquarePen className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-300" />
-            <span>New chat</span>
-          </button>
-
-          {/* Library Button */}
-          <button
-            onClick={onOpenKnowledge}
-            className="w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-[#121319] text-xs font-medium transition-colors cursor-pointer"
-          >
-            <LayoutGrid className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-            <span>Library</span>
-          </button>
-        </div>
-
-        {/* Scrollable Middle Content */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-4">
-          {/* Chats Collapsible Section */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setChatsOpen(!chatsOpen)}
-              className="w-full flex items-center justify-between text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 py-1 cursor-pointer"
-            >
-              <span>Chats</span>
-              <ChevronDown
-                className={`w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 transition-transform ${
-                  chatsOpen ? 'rotate-0' : '-rotate-90'
-                }`}
-              />
+            <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} aria-label="Close chat search" className="absolute right-0 top-1 flex h-10 w-9 items-center justify-center text-[var(--zovo-muted)]">
+              <X className="h-4 w-4" />
             </button>
+          </div>}
+          <button onClick={() => openWorkspacePanel(onOpenKnowledge)} className={rowClass}>
+            <BookOpen className="h-[18px] w-[18px] shrink-0" /> Library
+          </button>
+        </nav>
 
-            {chatsOpen && (
-              <div className="space-y-0.5">
-                {displayedConversations.map((c) => {
-                  const isCurrent = activeConversation?.id === c.id;
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        onSelectConversation(c.id);
-                        if (window.innerWidth < 1024) onClose();
+        <div onScroll={() => setConversationMenuId(null)} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4">
+          <button onClick={() => setChatsOpen(open => !open)} aria-expanded={chatsOpen} aria-controls="sidebar-recent-chats" className="mb-2 flex min-h-9 w-full items-center justify-between px-3 text-left text-[13px] text-[var(--zovo-muted)] hover:text-[var(--zovo-text)]">
+            Recents <ChevronDown className={`h-3.5 w-3.5 transition-transform ${chatsOpen ? '' : '-rotate-90'}`} />
+          </button>
+          {chatsOpen && <div id="sidebar-recent-chats" className="space-y-0.5">
+            {displayedConversations.length === 0 && <p className="px-3 py-2 text-sm text-[var(--zovo-muted)]">{searchQuery ? 'No matching chats' : 'Your chats will appear here'}</p>}
+            {displayedConversations.map(conversation => {
+              const current = activeConversation?.id === conversation.id;
+              return <div key={conversation.id} className={`group relative flex min-h-10 items-center rounded-lg lg:min-h-9 ${current ? 'bg-[var(--zovo-hover)]' : 'hover:bg-[var(--zovo-hover)]'}`}>
+                {editingId === conversation.id ? <input
+                  value={editTitle}
+                  onChange={event => setEditTitle(event.target.value)}
+                  onKeyDown={event => { if (event.key === 'Enter') saveRename(conversation.id); if (event.key === 'Escape') setEditingId(null); }}
+                  onBlur={() => saveRename(conversation.id)}
+                  autoFocus
+                  aria-label="Chat title"
+                  className="mx-2 h-8 min-w-0 flex-1 rounded border border-[var(--zovo-border)] bg-[var(--zovo-bg)] px-2 text-sm text-[var(--zovo-text)] focus:outline-2 focus:outline-[var(--zovo-muted)]"
+                /> : <>
+                  <button
+                    onClick={() => { onSelectConversation(conversation.id); closeOnMobile(); }}
+                    aria-current={current ? 'page' : undefined}
+                    title={conversation.title}
+                    className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 pl-3 pr-1 text-left text-[15px] text-[var(--zovo-text)] focus-visible:outline-2 focus-visible:outline-[var(--zovo-muted)] lg:min-h-9 lg:text-[14px]"
+                  >
+                    <span className="truncate">{conversation.title}</span>
+                    {conversation.pinned && <Pin className="h-3 w-3 shrink-0 text-[var(--zovo-muted)]" aria-label="Pinned" />}
+                  </button>
+                  <div ref={conversationMenuId === conversation.id ? conversationMenuRef : undefined} className="shrink-0">
+                    <button
+                      onClick={event => {
+                        setConversationMenuTop(Math.max(8, Math.min((window.visualViewport?.height || window.innerHeight) - 184, event.currentTarget.getBoundingClientRect().bottom + 4)));
+                        setConversationMenuId(previous => previous === conversation.id ? null : conversation.id);
                       }}
-                      className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                        isCurrent
-                          ? 'bg-zinc-200/90 text-zinc-900 font-medium dark:bg-[#181922] dark:text-white'
-                          : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-[#121319]'
-                      }`}
-                    >
-                      {editingId === c.id ? (
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveRename(c.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          onBlur={() => handleSaveRename(c.id)}
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full px-1.5 py-0.5 rounded text-xs bg-white dark:bg-black border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-hidden"
-                        />
-                      ) : (
-                        <span className="truncate pr-2">{c.title}</span>
-                      )}
-
-                      {/* Quick action buttons on hover */}
-                      {!editingId && (
-                        <div
-                          className="hidden group-hover:flex items-center gap-1 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => {
-                              setEditingId(c.id);
-                              setEditTitle(c.title);
-                            }}
-                            className="p-0.5 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded cursor-pointer"
-                            title="Rename"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteConversation(c.id)}
-                            className="p-0.5 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 rounded cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                      aria-label={`Actions for ${conversation.title}`}
+                      aria-expanded={conversationMenuId === conversation.id}
+                      aria-controls={`chat-actions-${conversation.id}`}
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] focus-visible:outline-2 focus-visible:outline-[var(--zovo-muted)] lg:h-9 lg:w-8 ${conversationMenuId === conversation.id ? '' : 'lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100'}`}
+                    ><MoreHorizontal className="h-[18px] w-[18px]" /></button>
+                    {conversationMenuId === conversation.id && <div id={`chat-actions-${conversation.id}`} role="group" aria-label="Chat actions" style={{ top: conversationMenuTop }} className="fixed right-2 z-50 w-48 rounded-xl border border-[var(--zovo-border)] bg-[var(--zovo-surface)] p-1 shadow-xl">
+                      <button onClick={() => { setEditTitle(conversation.title); setEditingId(conversation.id); setConversationMenuId(null); }} className={menuItemClass}><Edit2 className="h-4 w-4" /> Rename</button>
+                      <button onClick={() => { onTogglePin(conversation.id); setConversationMenuId(null); }} className={menuItemClass}><Pin className="h-4 w-4" /> {conversation.pinned ? 'Unpin chat' : 'Pin chat'}</button>
+                      <button onClick={() => { onToggleArchive(conversation.id); setConversationMenuId(null); }} className={menuItemClass}><Archive className="h-4 w-4" /> Archive</button>
+                      <button onClick={() => { onDeleteConversation(conversation.id); setConversationMenuId(null); }} className={`${menuItemClass} text-red-400`}><Trash2 className="h-4 w-4" /> Delete</button>
+                    </div>}
+                  </div>
+                </>}
+              </div>;
+            })}
+          </div>}
         </div>
 
-        {/* User Account Profile Footer */}
-        <div className="p-3 border-t border-zinc-200/80 bg-[#E8EAEF] dark:border-white/5 dark:bg-[#090A0F] transition-colors relative" ref={accountMenuRef}>
-          {/* Account Popover Menu */}
-          {accountMenuOpen && (
-            <div className="absolute bottom-full left-3 right-3 mb-2 p-1.5 rounded-2xl bg-white dark:bg-[#121319] border border-zinc-200 dark:border-white/10 shadow-2xl z-50 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/80 mb-1">
-                <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
-                <p className="text-[11px] text-zinc-500 truncate">{user?.email || 'guest@zovo.ai'}</p>
-                <span className={`inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                  isGuest
-                    ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                    : 'bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300'
-                }`}>
-                  {isGuest ? 'Guest Session' : 'Active Account'}
-                </span>
-              </div>
-
-              <div className="space-y-0.5">
-                <button
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    onOpenSettings();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Settings & Preferences</span>
-                </button>
-
-                {isGuest ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        openAuthModal('login');
-                      }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
-                    >
-                      <LogIn className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Sign In</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        openAuthModal('register');
-                      }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors font-medium text-left cursor-pointer"
-                    >
-                      <UserPlus className="w-3.5 h-3.5 text-blue-500" />
-                      <span>Sign Up / Create Account</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        openAuthModal('login');
-                      }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors text-left cursor-pointer"
-                    >
-                      <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Switch Account</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        logout();
-                      }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left cursor-pointer"
-                    >
-                      <LogOut className="w-3.5 h-3.5 text-red-500" />
-                      <span>Log Out</span>
-                    </button>
-                  </>
-                )}
-              </div>
+        <div ref={accountMenuRef} className="relative shrink-0 border-t border-[var(--zovo-border)] p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          {accountMenuOpen && <div role="group" aria-label="Account options" className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-[var(--zovo-border)] bg-[var(--zovo-surface)] p-1.5 shadow-xl">
+            <div className="mb-1 border-b border-[var(--zovo-border)] px-3 py-2">
+              <p className="truncate text-sm font-medium">{displayName}</p>
+              <p className="mt-0.5 truncate text-xs text-[var(--zovo-muted)]">{isGuest ? 'Guest session' : user?.email}</p>
             </div>
-          )}
-
-          <div
-            onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-            className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-zinc-200/70 dark:hover:bg-[#121319] transition-colors cursor-pointer group"
-            title="Account & Settings options"
-          >
-            {/* User Avatar Circle */}
-            <div className={`w-7 h-7 rounded-full ${isGuest ? 'bg-zinc-300 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300' : 'bg-[#7C3AED] text-white'} font-semibold text-xs flex items-center justify-center shrink-0 shadow-xs border border-white/20`}>
-              {initial}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-zinc-900 dark:text-white truncate leading-tight">
-                {displayName}
-              </p>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                {isGuest ? 'Guest Session' : 'Active Account'}
-              </p>
-            </div>
-            <Settings className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-200 transition-colors shrink-0" />
-          </div>
+            <button onClick={() => openWorkspacePanel(onOpenSettings)} className={menuItemClass}><Settings className="h-4 w-4" /> Settings</button>
+            <button onClick={() => openWorkspacePanel(onOpenPrompts)} className={menuItemClass}><BookMarked className="h-4 w-4" /> Prompt library</button>
+            <button onClick={() => openWorkspacePanel(onOpenAssistants)} className={menuItemClass}><Sparkles className="h-4 w-4" /> Assistants</button>
+            {isGuest ? <>
+              <button onClick={() => { setAccountMenuOpen(false); openAuthModal('login'); closeOnMobile(); }} className={menuItemClass}><LogIn className="h-4 w-4" /> Sign in</button>
+              <button onClick={() => { setAccountMenuOpen(false); openAuthModal('register'); closeOnMobile(); }} className={menuItemClass}><UserPlus className="h-4 w-4" /> Create account</button>
+            </> : <>
+              <button onClick={() => { setAccountMenuOpen(false); openAuthModal('login'); closeOnMobile(); }} className={menuItemClass}><UserCheck className="h-4 w-4" /> Switch account</button>
+              <button onClick={() => { setAccountMenuOpen(false); logout(); closeOnMobile(); }} className={menuItemClass}><LogOut className="h-4 w-4" /> Log out</button>
+            </>}
+          </div>}
+          <button onClick={() => setAccountMenuOpen(open => !open)} aria-expanded={accountMenuOpen} aria-label="Account and settings" className="flex min-h-12 w-full items-center gap-3 rounded-lg px-2 text-left hover:bg-[var(--zovo-hover)] focus-visible:outline-2 focus-visible:outline-[var(--zovo-muted)]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--zovo-hover)] text-xs font-medium">{initial}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{displayName}</span>
+              <span className="block text-xs text-[var(--zovo-muted)]">{isGuest ? 'Guest session' : 'Personal account'}</span>
+            </span>
+            <MoreHorizontal className="h-[18px] w-[18px] text-[var(--zovo-muted)]" />
+          </button>
         </div>
       </aside>
     </>
   );
 }
-

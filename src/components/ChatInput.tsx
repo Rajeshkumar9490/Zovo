@@ -14,7 +14,6 @@ import {
   Check,
   Zap,
   Brain,
-  Gauge,
 } from 'lucide-react';
 import { GeminiModelId, MessageAttachment } from '../types.js';
 import { ZOVO_MODELS, getModelDisplayName } from '../lib/models.js';
@@ -69,6 +68,7 @@ export function ChatInput({
     return () => controller.abort();
   }, []);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -77,7 +77,6 @@ export function ChatInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -208,6 +207,11 @@ export function ChatInput({
   };
 
   const handleFileUpload = async (file: File) => {
+    setUploadError(null);
+    if (file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|heic|svg|bmp|tiff?)$/i.test(file.name)) {
+      setUploadError('Zovo Fast and Zovo Flex support PDF, Word and text documents. Images are not supported.');
+      return;
+    }
     if (file.size > 3 * 1024 * 1024 || pendingAttachments.reduce((sum, a) => sum + a.size, file.size) > 3 * 1024 * 1024) {
       alert('Keep attachments in one message under 3 MB.'); return;
     }
@@ -315,7 +319,11 @@ export function ChatInput({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-5 pt-1 relative z-20">
+    <div className="zovo-composer-wrap w-full max-w-[848px] mx-auto px-4 sm:px-6 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 relative z-20 shrink-0">
+      {uploadError && <div role="alert" className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+        <span>{uploadError}</span>
+        <button type="button" aria-label="Dismiss upload notice" onClick={() => setUploadError(null)}><X className="w-4 h-4" /></button>
+      </div>}
       {/* Voice / Notification status chip */}
       {voiceStatus && (
         <div className="flex justify-center mb-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
@@ -364,19 +372,15 @@ export function ChatInput({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative rounded-3xl bg-white border border-zinc-200 shadow-md dark:bg-black/90 dark:border-zinc-800/90 dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-all duration-200 backdrop-blur-md px-2.5 py-1.5 flex items-end gap-2.5 ${
-          isDragging
-            ? 'border-zinc-900 ring-2 ring-zinc-500/40 dark:border-white dark:ring-white/20'
-            : 'hover:border-zinc-300 dark:hover:border-zinc-700 focus-within:border-zinc-400 dark:focus-within:border-zinc-600'
-        }`}
+        className={`zovo-composer relative rounded-[28px] bg-[var(--zovo-composer)] text-[var(--zovo-text)] px-3 py-2.5 flex flex-wrap sm:flex-nowrap items-end gap-x-2 gap-y-1 ${isDragging ? 'ring-2 ring-[var(--zovo-muted)]' : ''}`}
       >
         {/* Left: Plus Attachment Button */}
         <button
           type="button"
           onClick={handleAttachmentButtonClick}
           disabled={isUploading}
-          className="w-8.5 h-8.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-950 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer border border-transparent dark:border-zinc-800 mb-0.5"
-          title="Add files, documents or images"
+          className="order-2 sm:order-none w-10 h-10 rounded-full text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+          title="Add PDF, Word or text documents"
         >
           {isUploading ? (
             <Loader2 className="w-4 h-4 animate-spin text-zinc-500 dark:text-zinc-400" />
@@ -401,20 +405,13 @@ export function ChatInput({
           ref={fileInputRef}
           type="file"
           onChange={handleFileInputChange}
-          accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.md,.docx,.csv,.json"
-          className="hidden"
-        />
-        <input
-          aria-label="Upload an image"
-          ref={imageInputRef}
-          type="file"
-          onChange={handleFileInputChange}
-          accept="image/*"
+          accept=".pdf,.txt,.md,.docx,.csv,.json"
           className="hidden"
         />
 
+
         {/* Center: Auto-expanding Text Area */}
-        <div className="flex-1 min-w-0 flex items-center py-1">
+        <div className="order-1 sm:order-none basis-full sm:basis-auto sm:flex-1 min-w-0 flex items-center py-2 px-2 sm:px-0">
           <textarea
             aria-label="Message Zovo"
             ref={textareaRef}
@@ -429,18 +426,18 @@ export function ChatInput({
             }}
             onPaste={handlePaste}
             placeholder="Ask Zovo anything..."
-            className="w-full bg-transparent text-sm text-zinc-900 placeholder-zinc-400 dark:text-zinc-100 dark:placeholder-zinc-500 focus:outline-hidden font-sans px-1 py-0.5 resize-none max-h-36 overflow-y-auto leading-relaxed break-words whitespace-pre-wrap"
+            className="w-full bg-transparent text-base text-[var(--zovo-text)] placeholder:text-[var(--zovo-muted)] focus:outline-hidden font-sans px-1 py-0.5 resize-none max-h-40 overflow-y-auto leading-6 break-words whitespace-pre-wrap"
           />
         </div>
 
         {/* Right: Model badge, Mic, and Image/Action Button */}
-        <div className="flex items-center gap-2 shrink-0 mb-0.5">
+        <div className="order-3 sm:order-none ml-auto flex items-center gap-1 shrink-0">
           {/* Zovo Model Selector Menu */}
           <div className="relative" ref={modelMenuRef}>
             <button
               type="button"
               onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
-              className="px-2.5 py-1 rounded-full text-xs font-medium text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-white dark:bg-zinc-900/80 dark:hover:bg-zinc-800 transition-colors flex items-center gap-1 cursor-pointer border border-zinc-200/80 dark:border-zinc-800"
+              className="h-10 px-2.5 rounded-full text-sm text-[var(--zovo-muted)] hover:text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)] transition-colors flex items-center gap-1.5 cursor-pointer"
               ref={modelButtonRef}
               aria-haspopup="menu"
               aria-expanded={isModelMenuOpen}
@@ -448,7 +445,7 @@ export function ChatInput({
               title={`Active model: ${getModelDisplayName(activeModel)}. Click to choose.`}
             >
               <span>{getModelDisplayName(activeModel)}</span>
-              <ChevronDown className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-[var(--zovo-muted)]" />
             </button>
 
             {/* Model Selection Floating Dropdown */}
@@ -460,21 +457,19 @@ export function ChatInput({
                 const index = items.indexOf(document.activeElement as HTMLButtonElement);
                 const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length-1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
                 items[next]?.focus();
-              }} className="absolute bottom-full right-0 mb-2.5 w-64 p-1.5 rounded-2xl bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 shadow-2xl backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-2.5 py-1.5 border-b border-zinc-100 dark:border-zinc-800/80 mb-1">
-                  <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              }} className="absolute bottom-full right-0 mb-3 w-[280px] max-w-[calc(100vw-32px)] p-2 rounded-2xl bg-[var(--zovo-sidebar)] border border-[var(--zovo-border)] shadow-xl z-50">
+                <div className="px-3 py-2 border-b border-[var(--zovo-border)] mb-1">
+                  <p className="text-xs font-medium text-[var(--zovo-muted)]">
                     Zovo Intelligence Models
                   </p>
                 </div>
                 <div className="space-y-1">
-                  {ZOVO_MODELS.filter(m => m.id !== 'gemini-3.1-flash-lite').map((m) => {
+                  {ZOVO_MODELS.map((m) => {
                     const isSelected = activeModel === m.id;
-                    const unavailable = !m.id.startsWith('gemini-') && configuredModels[m.id] !== true;
+                    const unavailable = configuredModels[m.id] === false;
                     const Icon =
-                      m.id === 'gemini-3.8-flash'
+                      m.id === 'groq/openai/gpt-oss-20b'
                         ? Zap
-                        : m.id === 'gemini-3.6-flash'
-                        ? Gauge
                         : Brain;
 
                     return (
@@ -488,21 +483,21 @@ export function ChatInput({
                           onSelectModel(m.id);
                           setIsModelMenuOpen(false);
                         }}
-                        className={`w-full text-left px-2.5 py-2 rounded-xl text-xs transition-colors flex items-start gap-2.5 cursor-pointer ${
+                        className={`w-full text-left px-3 py-3 rounded-xl text-sm transition-colors flex items-start gap-3 cursor-pointer disabled:opacity-50 ${
                           isSelected
-                            ? 'bg-zinc-100 text-zinc-900 border border-zinc-300 dark:bg-zinc-800 dark:text-white dark:border-zinc-700'
-                            : 'text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-zinc-900'
+                            ? 'bg-[var(--zovo-hover)] text-[var(--zovo-text)]'
+                            : 'text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)]'
                         }`}
                       >
-                        <div className="p-1 rounded-lg bg-zinc-200 dark:bg-zinc-800 mt-0.5 shrink-0 text-zinc-700 dark:text-zinc-300">
+                        <div className="p-1 rounded-lg mt-0.5 shrink-0 text-[var(--zovo-text)]">
                           <Icon className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold text-zinc-900 dark:text-white">{m.displayName}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />}
+                            <span className="font-medium text-[var(--zovo-text)]">{m.displayName}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[var(--zovo-text)]" />}
                           </div>
-                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                          <p className="text-xs text-[var(--zovo-muted)] mt-1 leading-4">
                             {unavailable ? 'Setup required' : m.tagline}
                           </p>
                         </div>
@@ -518,10 +513,10 @@ export function ChatInput({
           <button
             type="button"
             onClick={handleToggleVoice}
-            className={`w-8.5 h-8.5 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
               isRecording
                 ? 'bg-blue-600 text-white ring-2 ring-blue-400 ring-offset-2 ring-offset-black animate-pulse'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-900'
+                : 'text-[var(--zovo-text)] hover:bg-[var(--zovo-hover)]'
             }`}
             title={isRecording ? 'Stop voice recording' : 'Voice input (click and speak)'}
           >
@@ -541,38 +536,12 @@ export function ChatInput({
           ) : (
             <button
               type="button"
-              onClick={() => {
-                if (input.trim() || pendingAttachments.length > 0) {
-                  handleSubmit();
-                } else {
-                  imageInputRef.current?.click();
-                }
-              }}
-              className="w-9 h-9 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 flex items-center justify-center shadow-md transition-all cursor-pointer shrink-0"
-              title={
-                input.trim() || pendingAttachments.length > 0
-                  ? 'Send prompt'
-                  : 'Attach image or photo'
-              }
+              onClick={handleSubmit}
+              disabled={!input.trim() && pendingAttachments.length === 0}
+              className="w-10 h-10 rounded-full bg-[var(--zovo-text)] text-[var(--zovo-bg)] disabled:opacity-40 flex items-center justify-center transition-opacity shrink-0 disabled:cursor-default cursor-pointer"
+              title="Send prompt"
             >
-              {input.trim() || pendingAttachments.length > 0 ? (
-                <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
-              ) : (
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                </svg>
-              )}
+              <ArrowUp className="w-5 h-5" />
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@ import express, { Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db/index.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
+import { normalizeModelId } from '../../src/lib/models.js';
 
 const router = express.Router();
 
@@ -18,29 +19,21 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       convs = convs.filter((c) => c.title.toLowerCase().includes(search));
     }
 
-    // Attach last message preview and message count
-    const enriched = await Promise.all(
-      convs.map(async (c) => {
-        const messages = await db.getMessages(c.id);
-        const lastMsg = messages[messages.length - 1];
-        return {
-          id: c.id,
-          userId: c.user_id,
-          title: c.title,
-          model: c.model,
-          systemPrompt: c.system_prompt,
-          assistantId: c.assistant_id,
-          pinned: Boolean(c.pinned),
-          archived: Boolean(c.archived),
-          createdAt: c.created_at,
-          updatedAt: c.updated_at,
-          lastMessagePreview: lastMsg ? lastMsg.content.slice(0, 100) : '',
-          messageCount: messages.length,
-        };
-      })
-    );
+    // The sidebar needs metadata only; fetching every message delays startup.
+    const formatted = convs.map((c) => ({
+      id: c.id,
+      userId: c.user_id,
+      title: c.title,
+      model: normalizeModelId(c.model),
+      systemPrompt: c.system_prompt,
+      assistantId: c.assistant_id,
+      pinned: Boolean(c.pinned),
+      archived: Boolean(c.archived),
+      createdAt: c.created_at,
+      updatedAt: c.updated_at,
+    }));
 
-    res.json({ conversations: enriched });
+    res.json({ conversations: formatted });
   } catch (error: any) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({ error: 'Failed to fetch conversations' });
@@ -57,7 +50,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       id: crypto.randomUUID(),
       user_id: userId,
       title: title?.trim() || 'New Conversation',
-      model: model || 'gemini-3.8-flash',
+      model: normalizeModelId(model),
       system_prompt: systemPrompt || '',
       assistant_id: assistantId || '',
       pinned: 0,
@@ -69,7 +62,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         id: conv.id,
         userId: conv.user_id,
         title: conv.title,
-        model: conv.model,
+        model: normalizeModelId(conv.model),
         systemPrompt: conv.system_prompt,
         assistantId: conv.assistant_id,
         pinned: Boolean(conv.pinned),
@@ -133,7 +126,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
         id: conv.id,
         userId: conv.user_id,
         title: conv.title,
-        model: conv.model,
+        model: normalizeModelId(conv.model),
         systemPrompt: conv.system_prompt,
         assistantId: conv.assistant_id,
         pinned: Boolean(conv.pinned),
@@ -158,7 +151,7 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res: Response) 
 
     const updates: any = {};
     if (title !== undefined) updates.title = title;
-    if (model !== undefined) updates.model = model;
+    if (model !== undefined) updates.model = normalizeModelId(model);
     if (systemPrompt !== undefined) updates.system_prompt = systemPrompt;
     if (pinned !== undefined) updates.pinned = pinned ? 1 : 0;
     if (archived !== undefined) updates.archived = archived ? 1 : 0;
@@ -174,7 +167,7 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res: Response) 
         id: updated.id,
         userId: updated.user_id,
         title: updated.title,
-        model: updated.model,
+        model: normalizeModelId(updated.model),
         systemPrompt: updated.system_prompt,
         assistantId: updated.assistant_id,
         pinned: Boolean(updated.pinned),
